@@ -162,6 +162,20 @@
   /* =======================================================
      TRABAJO — desfile, dispersión y abanico
      ======================================================= */
+  /* Reparte las piezas alternando orientación. Sin esto salen las tres
+     verticales juntas y luego las tres apaisadas, y el arco queda con un
+     bloque alto y otro bajo en vez de tener ritmo. */
+  function intercalar(list) {
+    const v = list.filter(e => e.dataset.orientation !== 'landscape');
+    const h = list.filter(e => e.dataset.orientation === 'landscape');
+    const out = [];
+    while (v.length || h.length) {
+      if (v.length) out.push(v.shift());
+      if (h.length) out.push(h.shift());
+    }
+    return out;
+  }
+
   function fanCoords(list) {
     const out = [];
     const n = list.length;
@@ -169,28 +183,41 @@
 
     const W = deck.clientWidth;
     const H = deck.clientHeight;
-    const cw = Math.max(...list.map(el => el.offsetWidth)) || 240;
-    const ch = Math.max(...list.map(el => el.offsetHeight)) || 400;
-    const gap = Math.min((W - cw - 40) / Math.max(n - 1, 1), cw * 0.72);
-    const cx = W / 2 - cw / 2;
-    const cy = H / 2 - ch / 2 + 26;                 // centrado en el escenario
+    const ws = list.map(el => el.offsetWidth || 200);
+    const hs = list.map(el => el.offsetHeight || 300);
+
+    // Todas comparten ancho, así que el avance es uniforme.
+    const solape = 0.72;
+    const avance = ws.map(w => w * solape);
+    let total = ws[n - 1];
+    for (let i = 0; i < n - 1; i++) total += avance[i];
+
+    // Margen real de seguridad: la rotación ensancha la huella.
+    const disponible = W - 90;
+    const k = total > disponible ? disponible / total : 1;
+
+    let x = (W - total * k) / 2;
+    const eje = H / 2;
 
     list.forEach((el, i) => {
       const mid = (n - 1) / 2;
       const u = n === 1 ? 0 : (i - mid) / mid;      // -1 .. 1
       out.push({
-        x: cx + (i - mid) * gap,
-        y: cy + u * u * 66,                         // arco poco profundo
+        x: x,
+        // Cada pieza se centra en el MISMO eje pese a tener alturas
+        // distintas: si no, las apaisadas quedarían colgando arriba.
+        y: eje - hs[i] / 2 + u * u * 52,
         rotation: u * 7.5,
         z: 100 - Math.round(Math.abs(u) * 40)
       });
+      x += avance[i] * k;
     });
     return out;
   }
 
   function layoutFan(animate) {
     if (!deck) return;
-    const list = Array.from(deck.querySelectorAll('.piece')).filter(el => !el.hidden);
+    const list = intercalar(Array.from(deck.querySelectorAll('.piece')).filter(el => !el.hidden));
     const coords = fanCoords(list);
     list.forEach((el, i) => {
       const c = coords[i];
@@ -228,7 +255,10 @@
       y: parkY + (seeded(i, 5) - 0.5) * H * 0.44,
       rotation: (seeded(i, 9) - 0.5) * 34
     }));
-    const fan = fanCoords(cards);
+    const orden = intercalar(cards);
+    const fanPos = fanCoords(orden);
+    // Devuelve las coordenadas al orden del DOM para poder indexar por i.
+    const fan = cards.map(el => fanPos[orden.indexOf(el)]);
 
     cards.forEach((el, i) => gsap.set(el, {
       x: parkX, y: paradeY[i], rotation: 0, opacity: 1, scale: 0.9, zIndex: 10 + i
@@ -282,10 +312,57 @@
     // OJO: aquí NO va un ScrollTrigger que llame a layoutFan(). Se disparaba
     // durante el desfile y arrastraba las piezas al abanico antes de tiempo.
     // La fase 3 de la timeline ya las deja en su sitio.
+
+    // El abanico no se queda quieto una vez acomodado. La flotación va sobre
+    // .piece__thumb, NO sobre .piece: ahí viven las coordenadas del abanico y
+    // pisarlas rompería la posición y el reacomodo por filtros.
+    idle(cards);
+    wireHover(cards);
+
+    // La sombra de suelo entra cuando el abanico ya está formado.
+    ScrollTrigger.create({
+      trigger: stage,
+      start: 'top top',
+      end: '+=260%',
+      onUpdate: self => stage.classList.toggle('is-settled', self.progress > 0.72)
+    });
+  }
+
+  /* Vida propia del abanico: cada pieza respira a su ritmo. Periodos
+     primos entre sí para que el conjunto no lata a la vez. */
+  function idle(cards) {
+    cards.forEach((el, i) => {
+      const thumb = el.querySelector('.piece__thumb');
+      if (!thumb) return;
+      gsap.to(thumb, {
+        y: (seeded(i, 21) - 0.5) * 22 - 6,
+        rotation: (seeded(i, 23) - 0.5) * 2.6,
+        duration: 2.9 + seeded(i, 27) * 2.4,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1,
+        delay: seeded(i, 29) * 1.6
+      });
+    });
   }
 
   /* Reacomodo por filtros — aquí Flip sí es la herramienta:
      es un cambio de estado discreto, no una animación con scrub. */
+  /* Al pasar por encima, la pieza sale del vaivén y se adelanta. */
+  function wireHover(cards) {
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+    cards.forEach(el => {
+      const thumb = el.querySelector('.piece__thumb');
+      if (!thumb) return;
+      el.addEventListener('pointerenter', () => {
+        gsap.to(thumb, { scale: 1.045, duration: 0.45, ease: 'expo.out', overwrite: 'auto' });
+      });
+      el.addEventListener('pointerleave', () => {
+        gsap.to(thumb, { scale: 1, duration: 0.55, ease: 'expo.out', overwrite: 'auto' });
+      });
+    });
+  }
+
   function wireFlip() {
     if (!window.Flip || !deck) return;
     window.CCMotion = window.CCMotion || {};

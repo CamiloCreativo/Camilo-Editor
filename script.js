@@ -86,10 +86,24 @@
     return url;
   }
 
+  /* La miniatura se elige por ORIENTACIÓN, no por defecto.
+     Medido contra la API de YouTube:
+       oardefault.jpg    -> 1080x1920 (9:16 real) en Shorts · 120x90 inservible en apaisados
+       maxresdefault.jpg -> 1280x720  (16:9 real) siempre
+       hqdefault.jpg     -> 480x360   (4:3) CON BARRAS NEGRAS incrustadas
+     Usar hqdefault para todo era la causa de que las piezas se vieran
+     cuadradas y con marco negro. */
   function resolveThumbnail(video) {
     const ytId = extractYouTubeId(video.thumbnail) || extractYouTubeId(video.embed);
-    if (ytId) return 'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg';
-    return video.thumbnail || '';
+    if (!ytId) return video.thumbnail || '';
+    const ep = (video.orientation === 'portrait') ? 'oardefault' : 'maxresdefault';
+    return 'https://img.youtube.com/vi/' + ytId + '/' + ep + '.jpg';
+  }
+
+  /* Si el endpoint bueno no existe para ese video, se cae a hqdefault. */
+  function fallbackThumb(video) {
+    const ytId = extractYouTubeId(video.thumbnail) || extractYouTubeId(video.embed);
+    return ytId ? 'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg' : '';
   }
 
   function esc(s) {
@@ -131,7 +145,7 @@
         ' data-index="' + i + '"' +
         ' aria-label="Reproducir: ' + esc(v.title) + '">' +
         '<span class="piece__thumb">' +
-          (thumbUrl ? '<img src="' + esc(thumbUrl) + '" alt="" loading="lazy">' : '') +
+          (thumbUrl ? '<img src="' + esc(thumbUrl) + '" alt="" loading="lazy" data-fallback="' + esc(fallbackThumb(v)) + '">' : '') +
           '<span class="piece__play">' + playIconSVG + '</span>' +
         '</span>' +
         '<span class="piece__meta">' +
@@ -143,6 +157,15 @@
 
     deckEl.querySelectorAll('.piece').forEach(el => {
       el.addEventListener('click', () => onPieceClick(el));
+    });
+
+    // Si el endpoint elegido no existe para ese video, se cae a hqdefault.
+    deckEl.querySelectorAll('.piece__thumb img').forEach(img => {
+      img.addEventListener('error', function onFail() {
+        img.removeEventListener('error', onFail);
+        const fb = img.dataset.fallback;
+        if (fb && img.src !== fb) img.src = fb;
+      });
     });
   }
 

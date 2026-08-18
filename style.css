@@ -40,6 +40,44 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* =========================================================
+   EL FONDO NO ES PLANO
+   Dos capas fijas detrás de todo: luz y grano. Ninguna
+   intercepta el ratón ni entra en el flujo.
+   ========================================================= */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    /* luz cálida arriba a la derecha */
+    radial-gradient(58vw 52vh at 82% 6%, rgba(227, 100, 20, 0.13), transparent 68%),
+    /* frío profundo abajo a la izquierda */
+    radial-gradient(52vw 48vh at 10% 92%, rgba(0, 51, 102, 0.11), transparent 66%),
+    /* calidez de tierra, muy tenue, al centro-izquierda */
+    radial-gradient(40vw 40vh at 4% 42%, rgba(90, 62, 43, 0.07), transparent 70%),
+    /* retícula de marcas de registro, como en la referencia */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='132' height='132'%3E%3Cg stroke='%23003366' stroke-width='1' opacity='0.16'%3E%3Cpath d='M66 60v12M60 66h12'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  /* la retícula se desvanece hacia el centro para no competir con el texto */
+  -webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 45%, transparent 22%, #000 78%);
+          mask-image: radial-gradient(ellipse 78% 68% at 50% 45%, transparent 22%, #000 78%);
+}
+
+/* Grano: quita el plano de plástico del color liso */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.30;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E");
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
@@ -379,6 +417,24 @@ h1, h2, h3, .bebas {
 .work__titles li.is-lit { color: var(--ink); }
 
 /* El mazo. Estado por defecto = fila legible sin JS. */
+/* La sombra de suelo sobre la que se apoya el abanico */
+.work__stage::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: 12%;
+  width: min(78%, 980px);
+  height: 190px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(0, 51, 102, 0.16), transparent 68%);
+  filter: blur(26px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+.work__stage.is-settled::after { opacity: 1; }
+
 .work__deck {
   position: relative;
   display: flex;
@@ -391,7 +447,23 @@ h1, h2, h3, .bebas {
   position: absolute;
   inset: 0;
   height: auto;
+  --fan-w: clamp(150px, 16vw, 240px);
 }
+/* En abanico TODAS las piezas comparten ANCHO y la altura la dicta su
+   proporción. Al revés —altura fija— una pieza apaisada salía de 672px
+   y se desbordaba del viewport por mucho que se apretaran las posiciones. */
+.work__deck.is-fan .piece { width: var(--fan-w); }
+.work__deck.is-fan .piece__thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+}
+.work__deck.is-fan .piece[data-orientation="landscape"] { width: calc(var(--fan-w) * 1.42); }
+.work__deck.is-fan .piece[data-orientation="landscape"] .piece__thumb {
+  aspect-ratio: 16 / 10;   /* recorta un pelo el 16:9 para ganar altura
+                              y que el abanico no quede desequilibrado */
+}
+.work__deck.is-fan .piece__meta { width: 100%; }
 
 /* --- una pieza --- */
 .piece {
@@ -410,14 +482,19 @@ h1, h2, h3, .bebas {
   margin: 0;
 }
 .piece__thumb {
+  display: block;                /* SIN ESTO nada de lo de abajo aplica:
+                                    un <span> es inline y las cajas inline
+                                    ignoran aspect-ratio y no recortan. */
   position: relative;
   aspect-ratio: 9 / 16;
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
   background: var(--ink-wash);
-  /* Sombra larga y difusa: la pieza flota sobre el fondo,
-     no es una tarjeta con borde. */
-  box-shadow: 0 26px 50px -26px rgba(0, 51, 102, 0.45);
+  /* Sombra en dos capas: una de contacto, corta y densa, y otra
+     larga y difusa. La pieza flota sobre el fondo; no es una tarjeta. */
+  box-shadow:
+    0 2px 6px -2px rgba(0, 51, 102, 0.30),
+    0 30px 56px -28px rgba(0, 51, 102, 0.45);
   transition: box-shadow var(--t-med) var(--ease-out);
 }
 .piece[data-orientation="landscape"] .piece__thumb { aspect-ratio: 16 / 9; }
@@ -443,12 +520,16 @@ h1, h2, h3, .bebas {
 .piece__play svg { width: 20px; height: 20px; fill: var(--tinta); }
 .piece:hover .piece__play,
 .piece:focus-visible .piece__play { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-.piece:hover .piece__thumb { box-shadow: 0 34px 62px -24px rgba(0, 51, 102, 0.55); }
+.piece:hover .piece__thumb {
+  box-shadow:
+    0 4px 10px -2px rgba(0, 51, 102, 0.34),
+    0 44px 76px -26px rgba(0, 51, 102, 0.55);
+}
 .piece:hover { transform: translateY(-6px); }
 /* «Mechanical press»: el desplazamiento iguala la sombra */
 .piece:active { transform: translate(2px, 2px); }
 
-.piece__meta { padding: 14px 2px 0; }
+.piece__meta { display: block; padding: 14px 2px 0; }
 .work__deck.is-fan .piece__meta {
   position: absolute;
   left: 0; right: 0; top: 100%;
@@ -467,6 +548,8 @@ h1, h2, h3, .bebas {
 .work__deck.is-fan .piece:hover,
 .work__deck.is-fan .piece:focus-visible { z-index: 200 !important; }
 .piece__name {
+  display: block;                /* si queda inline, el título y las
+                                    etiquetas se pegan en una sola línea */
   font-family: var(--font-titulo);
   font-weight: 400;
   text-transform: uppercase;
@@ -476,6 +559,7 @@ h1, h2, h3, .bebas {
   color: var(--ink);
 }
 .piece__tags {
+  display: block;
   margin-top: 5px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -880,13 +964,47 @@ h1, h2, h3, .bebas {
   .frag, .frag--lead, .proc__photo { grid-column: 1 / -1 !important; }
   .proc__photo { max-width: 140px; }
 
-  .work__deck.is-fan { height: auto; display: flex; }
-  .work__deck.is-fan .piece { position: relative; }
+  /* En móvil no hay abanico ni pin: una tira que se desliza con el dedo,
+     con anclaje. Antes era una pila vertical a ancho completo. */
+  .work__stage { min-height: auto; padding-bottom: 0; }
+  .work__deck,
+  .work__deck.is-fan {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    height: auto;
+    inset: auto;
+    gap: 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 6px var(--pad) 26px;
+    margin-inline: calc(var(--pad) * -1);
+  }
+  .work__deck::-webkit-scrollbar { display: none; }
+  .work__deck .piece,
+  .work__deck.is-fan .piece {
+    position: relative;
+    flex: 0 0 72vw;
+    width: auto;
+    scroll-snap-align: center;
+  }
+  .work__deck .piece[data-orientation="landscape"] { flex-basis: 86vw; }
+  /* En móvil no hay hover: la ficha se ve siempre */
+  .work__deck.is-fan .piece__meta {
+    position: static;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .work__stage::after { display: none; }
 }
 
 @media (max-width: 480px) {
-  .piece, .piece[data-orientation="landscape"] { width: 100%; }
-  .work__deck { gap: 30px; }
+  .work__deck .piece { flex-basis: 78vw; }
+  .work__deck .piece[data-orientation="landscape"] { flex-basis: 90vw; }
   .cta { grid-template-columns: 1fr auto; }
   .cta__label { grid-column: 1 / -1; }
 }
