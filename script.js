@@ -281,6 +281,121 @@
     } else {
       mutate();
     }
+    railRefresh();
+  }
+
+  /* ---------- Carrusel móvil ----------
+     Debajo de 768px el mazo no es un abanico: es una tira que corre de
+     izquierda a derecha, anclada al borde izquierdo. Esto vive aquí y no
+     en motion.js a propósito — si el CDN de GSAP cae, el carrusel tiene
+     que seguir funcionando.
+
+     El mando nace `hidden` en el HTML y se destapa desde aquí: sin JS no
+     aparecen flechas que no llevan a ninguna parte. */
+  const railEl = document.getElementById('workRail');
+  const dotsEl = document.getElementById('workDots');
+  const mqRail = window.matchMedia('(max-width: 768px)');
+  let railTick = false;
+
+  function visiblePieces() {
+    if (!deckEl) return [];
+    return Array.from(deckEl.querySelectorAll('.piece')).filter(el => !el.hidden);
+  }
+
+  function deckPadLeft() {
+    return deckEl ? (parseFloat(getComputedStyle(deckEl).paddingLeft) || 0) : 0;
+  }
+
+  /* La pieza anclada es la más cercana a la línea de anclaje —borde
+     izquierdo más padding—. Se mide con rects y no con offsetLeft: dentro
+     de un contenedor con scroll, offsetLeft cambia de origen según quién
+     esté posicionado, y devuelve números que no significan lo mismo. */
+  function railIndex() {
+    const list = visiblePieces();
+    if (!deckEl || !list.length) return 0;
+    const linea = deckEl.getBoundingClientRect().left + deckPadLeft();
+    let idx = 0, mejor = Infinity;
+    list.forEach((el, i) => {
+      const d = Math.abs(el.getBoundingClientRect().left - linea);
+      if (d < mejor) { mejor = d; idx = i; }
+    });
+    return idx;
+  }
+
+  function railGo(i) {
+    const list = visiblePieces();
+    if (!deckEl || !list.length) return;
+    const el = list[Math.max(0, Math.min(list.length - 1, i))];
+    const x = deckEl.scrollLeft
+      + el.getBoundingClientRect().left - deckEl.getBoundingClientRect().left
+      - deckPadLeft();
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    deckEl.scrollTo({ left: Math.max(0, x), behavior: suave ? 'smooth' : 'auto' });
+  }
+
+  function renderDots() {
+    if (!dotsEl) return;
+    dotsEl.innerHTML = visiblePieces().map((el, i) => {
+      const name = el.querySelector('.piece__name');
+      const label = name ? name.textContent : ('la pieza ' + (i + 1));
+      return '<button class="rail__dot" type="button" data-go="' + i +
+        '" aria-label="Ir a ' + esc(label) + '"></button>';
+    }).join('');
+    dotsEl.querySelectorAll('.rail__dot').forEach(btn => {
+      btn.addEventListener('click', () => railGo(Number(btn.dataset.go)));
+    });
+  }
+
+  function railSync() {
+    if (!railEl || !deckEl || railEl.hidden) return;
+    const activo = railIndex();
+    if (dotsEl) {
+      dotsEl.querySelectorAll('.rail__dot').forEach((d, k) => {
+        d.classList.toggle('is-on', k === activo);
+        if (k === activo) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
+    }
+    const prev = railEl.querySelector('[data-rail="prev"]');
+    const next = railEl.querySelector('[data-rail="next"]');
+    // El tope se mide por scroll, no por índice: la última pieza puede no
+    // llegar nunca a la línea de anclaje y estar aun así entera a la vista.
+    const fin = deckEl.scrollLeft + deckEl.clientWidth >= deckEl.scrollWidth - 4;
+    if (prev) prev.disabled = deckEl.scrollLeft <= 4;
+    if (next) next.disabled = fin;
+  }
+
+  /* Cambió el filtro o el ancho: otras piezas, otros puntos, y la tira
+     vuelve al principio. Con una sola pieza visible el mando sobra. */
+  function railRefresh() {
+    if (!railEl) return;
+    railEl.hidden = !mqRail.matches || visiblePieces().length < 2;
+    renderDots();
+    if (!railEl.hidden && deckEl) deckEl.scrollTo({ left: 0, behavior: 'auto' });
+    railSync();
+  }
+
+  function railInit() {
+    if (!railEl || !deckEl) return;
+
+    railEl.querySelectorAll('[data-rail]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        railGo(railIndex() + (btn.dataset.rail === 'next' ? 1 : -1));
+      });
+    });
+
+    deckEl.addEventListener('scroll', () => {
+      if (railTick) return;
+      railTick = true;
+      requestAnimationFrame(() => { railTick = false; railSync(); });
+    }, { passive: true });
+
+    // Safari viejo no tiene addEventListener en MediaQueryList.
+    if (mqRail.addEventListener) mqRail.addEventListener('change', railRefresh);
+    else if (mqRail.addListener) mqRail.addListener(railRefresh);
+    window.addEventListener('resize', railSync, { passive: true });
+
+    railRefresh();
   }
 
   /* ---------- Modal ---------- */
@@ -396,6 +511,7 @@
   renderTitles();
   renderTicker();
   renderFilters();
+  railInit();
   onScroll();
 
   /* motion.js consume esto. Si motion.js no llega a correr,

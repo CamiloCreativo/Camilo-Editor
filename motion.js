@@ -215,8 +215,14 @@
     return out;
   }
 
+  /* Solo se recalcula si el mazo ESTÁ en abanico. En móvil el mazo es una
+     tira de flexbox: meterle las coordenadas del abanico —lo que pasaba en
+     cada `resize`, y el móvil dispara `resize` con solo esconder la barra
+     del navegador— encimaba las piezas y las sacaba de la pantalla. */
+  const enMovil = () => window.matchMedia('(max-width: 768px)').matches;
+
   function layoutFan(animate) {
-    if (!deck) return;
+    if (!deck || !deck.classList.contains('is-fan') || enMovil()) return;
     const list = intercalar(Array.from(deck.querySelectorAll('.piece')).filter(el => !el.hidden));
     const coords = fanCoords(list);
     list.forEach((el, i) => {
@@ -364,9 +370,27 @@
   }
 
   function wireFlip() {
-    if (!window.Flip || !deck) return;
+    if (!deck) return;
     window.CCMotion = window.CCMotion || {};
     window.CCMotion.reflow = mutate => {
+      // En móvil no hay abanico que rearmar: Flip con `absolute: true`
+      // arrancaba las piezas de la tira para animarlas y las devolvía
+      // descolocadas. Aquí basta con que las que quedan entren.
+      if (!deck.classList.contains('is-fan') || enMovil()) {
+        mutate();
+        const vivas = deck.querySelectorAll('.piece:not([hidden])');
+        if (vivas.length) {
+          gsap.fromTo(vivas,
+            { opacity: 0, y: 12 },
+            { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out',
+              stagger: 0.04, clearProps: 'transform' });
+        }
+        return;
+      }
+
+      // Escritorio sin Flip: el abanico se recoloca igual, sin transición.
+      if (!window.Flip) { mutate(); layoutFan(true); return; }
+
       const targets = deck.querySelectorAll('.piece');
       const state = Flip.getState(targets, { props: 'opacity' });
       mutate();
@@ -487,12 +511,30 @@
      MÓVIL — sin pins. Versión corta que no secuestra el scroll.
      ======================================================= */
   function mobile() {
-    gsap.utils.toArray('.frag, .proc__photo, .piece').forEach(el => {
+    // Si se llegó aquí estrechando la ventana, las piezas todavía traen
+    // las coordenadas del abanico puestas a mano. Se limpian antes de nada.
+    gsap.set('.piece', { clearProps: 'all' });
+    gsap.set('.piece__thumb', { clearProps: 'all' });
+
+    gsap.utils.toArray('.frag, .proc__photo').forEach(el => {
       gsap.from(el, {
         opacity: 0, y: 30, duration: 0.6, ease: 'power2.out',
         scrollTrigger: { trigger: el, start: 'top 92%', once: true }
       });
     });
+
+    // Las piezas van en una sola tanda disparada por el mazo: están todas a
+    // la misma altura, así que un ScrollTrigger por pieza las encendía a la
+    // vez y además dejaba transformaciones puestas mientras se desliza.
+    const cards = deck ? gsap.utils.toArray('.piece', deck) : [];
+    if (cards.length) {
+      gsap.from(cards, {
+        opacity: 0, y: 24, duration: 0.55, ease: 'power2.out', stagger: 0.06,
+        clearProps: 'transform',
+        scrollTrigger: { trigger: deck, start: 'top 88%', once: true }
+      });
+    }
+
     const sec = document.querySelector('.contact');
     if (sec) gsap.from('.cta', {
       opacity: 0, y: 26, duration: 0.55, stagger: 0.1, ease: 'power2.out',
@@ -511,7 +553,20 @@
     wireFlip();
 
     const mm = gsap.matchMedia();
-    mm.add('(min-width: 769px)', () => { work(); proc(); });
+    mm.add('(min-width: 769px)', () => {
+      work(); proc();
+      // gsap revierte sus tweens al salir del contexto, pero no las clases
+      // ni los `gsap.set` sueltos. Sin esto, al estrechar la ventana la tira
+      // nacía con las piezas encimadas donde las dejó el abanico.
+      return () => {
+        if (deck) deck.classList.remove('is-fan');
+        if (frame) frame.classList.remove('is-on');
+        if (titles) titles.classList.remove('is-on');
+        if (stage) stage.classList.remove('is-settled');
+        gsap.set('.piece', { clearProps: 'all' });
+        gsap.set('.piece__thumb', { clearProps: 'all' });
+      };
+    });
     mm.add('(max-width: 768px)', () => { mobile(); });
 
     // El pin necesita altura determinista: recalcular cuando las

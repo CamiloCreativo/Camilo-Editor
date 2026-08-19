@@ -633,6 +633,48 @@ h1, h2, h3, .bebas {
   min-height: 1.6em;
 }
 
+/* --- mando del carrusel móvil ---
+   En escritorio no existe: el abanico se recorre con el scroll. Aquí solo
+   queda declarado; quien lo enciende es la consulta de 768px. */
+.work__rail { display: none; }
+.rail__arrow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  padding: 0;
+  background: none;
+  border: 1.4px solid var(--ink-line);
+  border-radius: 50%;
+  color: var(--ink);
+  cursor: pointer;
+  transition: opacity var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.rail__arrow svg { width: 17px; height: 17px; }
+.rail__arrow:disabled { opacity: 0.28; cursor: default; }
+.rail__arrow:active:not(:disabled) { transform: translate(1px, 1px); border-color: var(--flare); }
+
+.rail__dots { display: flex; align-items: center; gap: 2px; }
+.rail__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 44px;      /* la diana táctil, no el punto */
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.rail__dot::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--ink-line);    /* filete, nunca texto */
+  transition: background var(--t-fast), transform var(--t-fast) var(--ease-out);
+}
+.rail__dot.is-on::before { background: var(--flare); transform: scale(1.3); }
+
 /* =========================================================
    PROCESO
    ========================================================= */
@@ -964,47 +1006,98 @@ h1, h2, h3, .bebas {
   .frag, .frag--lead, .proc__photo { grid-column: 1 / -1 !important; }
   .proc__photo { max-width: 140px; }
 
-  /* En móvil no hay abanico ni pin: una tira que se desliza con el dedo,
-     con anclaje. Antes era una pila vertical a ancho completo. */
+  /* MÓVIL — carrusel tradicional, no abanico.
+     Una tira que corre de izquierda a derecha, anclada al borde izquierdo
+     y con la siguiente pieza asomando: se ve que hay más y hacia dónde.
+     El abanico —posiciones absolutas, rotaciones, solape— es de escritorio
+     y aquí no entra ninguna de sus reglas. */
   .work__stage { min-height: auto; padding-bottom: 0; }
   .work__deck,
   .work__deck.is-fan {
     position: relative;
     display: flex;
     flex-wrap: nowrap;
+    align-items: center;   /* eje común: bajo `flex-end` las alturas
+                              distintas dejaban la tira dentada */
     height: auto;
     inset: auto;
-    gap: 14px;
+    gap: 16px;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--pad);
+    overscroll-behavior-x: contain;   /* el swipe no arrastra la página */
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    padding: 6px var(--pad) 26px;
+    /* el aire vertical es para la sombra: `overflow-y` la recortaría */
+    padding: 10px var(--pad) 30px;
     margin-inline: calc(var(--pad) * -1);
   }
   .work__deck::-webkit-scrollbar { display: none; }
+
+  /* Una diapositiva: ancho fijo por orientación, alto por proporción.
+     Al revés —alto fijo para todas— un 16:9 sale más ancho que la
+     pantalla y un 9:16 sale del alto del viewport. */
   .work__deck .piece,
   .work__deck.is-fan .piece {
     position: relative;
-    flex: 0 0 72vw;
-    width: auto;
-    scroll-snap-align: center;
+    top: auto; left: auto;
+    flex: 0 0 auto;
+    width: min(62vw, 270px);
+    margin: 0;
+    scroll-snap-align: start;
   }
-  .work__deck .piece[data-orientation="landscape"] { flex-basis: 86vw; }
-  /* En móvil no hay hover: la ficha se ve siempre */
+  .work__deck .piece[data-orientation="landscape"],
+  .work__deck.is-fan .piece[data-orientation="landscape"] { width: min(88vw, 430px); }
+
+  /* Esquinas y sombra se quedan: son de la tarjeta, no del abanico. */
+  .work__deck .piece__thumb,
+  .work__deck.is-fan .piece__thumb { width: 100%; height: auto; aspect-ratio: 9 / 16; }
+  .work__deck .piece[data-orientation="landscape"] .piece__thumb,
+  .work__deck.is-fan .piece[data-orientation="landscape"] .piece__thumb { aspect-ratio: 16 / 9; }
+
+  /* Sin hover nada dice que la pieza es un video: el play se queda puesto. */
+  .piece__play { opacity: 1; transform: translate(-50%, -50%) scale(1); width: 52px; height: 52px; }
+
+  /* La ficha se ve siempre, debajo de la tarjeta y no flotando sobre ella. */
+  .work__deck .piece__meta,
   .work__deck.is-fan .piece__meta {
     position: static;
+    width: 100%;
+    padding: 12px 2px 0;
     opacity: 1;
     transform: none;
     pointer-events: auto;
   }
   .work__stage::after { display: none; }
+
+  /* El mando solo existe aquí, y solo si el JS lo destapó. */
+  .work__rail:not([hidden]) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 2px;
+  }
+}
+
+/* En pantalla táctil el :hover se queda pegado después del toque: la pieza
+   se quedaba levantada y con la sombra grande hasta tocar en otro sitio. */
+@media (max-width: 768px) and (hover: none) {
+  .piece:hover { transform: none; }
+  .piece:hover .piece__thumb {
+    box-shadow:
+      0 2px 6px -2px rgba(0, 51, 102, 0.30),
+      0 30px 56px -28px rgba(0, 51, 102, 0.45);
+  }
 }
 
 @media (max-width: 480px) {
-  .work__deck .piece { flex-basis: 78vw; }
-  .work__deck .piece[data-orientation="landscape"] { flex-basis: 90vw; }
+  /* Menos ancho de pantalla: la apaisada gana lo que puede. La vertical
+     se queda en su 62vw —ya trae tope en píxeles— para que la siguiente
+     pieza siga asomando y se vea que la tira continúa. */
+  .work__deck .piece[data-orientation="landscape"],
+  .work__deck.is-fan .piece[data-orientation="landscape"] { width: 90vw; }
   .cta { grid-template-columns: 1fr auto; }
   .cta__label { grid-column: 1 / -1; }
 }
