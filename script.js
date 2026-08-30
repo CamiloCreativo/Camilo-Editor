@@ -77,12 +77,14 @@
     return match ? match[1] : null;
   }
 
+  /* `playsinline=1` no es decorativo: sin él, iOS se lleva el video a pantalla
+     completa, que es justo lo contrario de reproducirlo dentro de la tarjeta. */
   function toEmbedUrl(url) {
     if (!url) return '';
     const ytId = extractYouTubeId(url);
-    if (ytId) return 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&rel=0';
+    if (ytId) return 'https://www.youtube.com/embed/' + ytId + '?autoplay=1&rel=0&playsinline=1';
     const vimeo = url.match(/vimeo\.com\/(\d+)/);
-    if (vimeo) return 'https://player.vimeo.com/video/' + vimeo[1] + '?autoplay=1';
+    if (vimeo) return 'https://player.vimeo.com/video/' + vimeo[1] + '?autoplay=1&playsinline=1';
     return url;
   }
 
@@ -98,6 +100,19 @@
     if (!ytId) return video.thumbnail || '';
     const ep = (video.orientation === 'portrait') ? 'oardefault' : 'maxresdefault';
     return 'https://img.youtube.com/vi/' + ytId + '/' + ep + '.jpg';
+  }
+
+  /* Cuando el endpoint elegido no existe para ese video, la imagen se cae a
+     `data-fallback`. Lo usan las piezas del mazo y la portada de la presentación,
+     así que vive suelto en vez de dentro de renderDeck(). */
+  function wireThumbFallback(imgs) {
+    imgs.forEach(img => {
+      img.addEventListener('error', function onFail() {
+        img.removeEventListener('error', onFail);
+        const fb = img.dataset.fallback;
+        if (fb && img.src !== fb) img.src = fb;
+      });
+    });
   }
 
   /* Si el endpoint bueno no existe para ese video, se cae a hqdefault. */
@@ -159,14 +174,7 @@
       el.addEventListener('click', () => onPieceClick(el));
     });
 
-    // Si el endpoint elegido no existe para ese video, se cae a hqdefault.
-    deckEl.querySelectorAll('.piece__thumb img').forEach(img => {
-      img.addEventListener('error', function onFail() {
-        img.removeEventListener('error', onFail);
-        const fb = img.dataset.fallback;
-        if (fb && img.src !== fb) img.src = fb;
-      });
-    });
+    wireThumbFallback(deckEl.querySelectorAll('.piece__thumb img'));
   }
 
   function renderTitles() {
@@ -447,6 +455,27 @@
     }
   });
 
+  /* ---------- Presentación en video ----------
+     Fachada. En el HTML la portada es un enlace de verdad a YouTube: sin JS el
+     video sigue estando a un clic. Aquí ese enlace se convierte en el
+     reproductor de la propia tarjeta —la caja ya trae su proporción, así que el
+     cambio no mueve nada de sitio— y nadie sale de la página. */
+  const pitchEl = document.getElementById('pitchPlayer');
+  const pitchCover = pitchEl ? pitchEl.querySelector('.pitch__cover') : null;
+  if (pitchEl && pitchCover) {
+    wireThumbFallback(pitchEl.querySelectorAll('img[data-fallback]'));
+
+    pitchCover.addEventListener('click', e => {
+      e.preventDefault();
+      const src = toEmbedUrl(pitchCover.dataset.embed || pitchCover.href);
+      pitchEl.innerHTML = '<iframe src="' + esc(src) + '"' +
+        ' title="Presentación en video de Camilo Creativo"' +
+        ' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"' +
+        ' allowfullscreen></iframe>';
+      pitchEl.classList.add('is-playing');
+    });
+  }
+
   /* ---------- Toast ---------- */
   let toastTimer;
   function showToast(message) {
@@ -490,7 +519,9 @@
      Vive aquí y no en motion.js a propósito: si GSAP no carga,
      la navegación tiene que seguir funcionando. */
   const navEl = document.getElementById('nav');
-  const sections = document.querySelectorAll('main section[id]');
+  // `[data-nav="off"]` deja fuera a las secciones que no tienen enlace en el
+  // menú: si entraran, al pasar por ellas no quedaría ningún enlace encendido.
+  const sections = document.querySelectorAll('main section[id]:not([data-nav="off"])');
   const navAnchors = document.querySelectorAll('.nav__link');
 
   function onScroll() {

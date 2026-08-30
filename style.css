@@ -356,6 +356,106 @@ h1, h2, h3, .bebas {
 .hero__cue svg { width: 15px; height: 15px; }
 
 /* =========================================================
+   PRESENTACIÓN — la carta en video, antes del trabajo
+   La tarjeta es la misma del portafolio: 18px de radio y la
+   sombra en dos capas. Cambia el sitio, no la pieza.
+   ========================================================= */
+.pitch {
+  position: relative;
+  padding: clamp(70px, 10vw, 130px) 0;
+}
+.pitch__inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+  display: grid;
+  /* Áreas y no orden de columnas: el cue es hermano del reproductor para que
+     en móvil caiga debajo del video, pero en escritorio tiene que seguir
+     colgando del texto, a la izquierda. */
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "texto  player"
+    "cue    player";
+  gap: 0 clamp(30px, 5vw, 80px);
+  align-content: center;
+}
+.pitch__text { grid-area: texto; align-self: end; }
+.pitch__cue { grid-area: cue; align-self: start; justify-self: start; }
+.pitch__player { grid-area: player; align-self: center; }
+.pitch__title {
+  font-size: clamp(2.4rem, 6.5vw, 5.6rem);
+  color: var(--ink);
+  margin-bottom: clamp(18px, 2.4vw, 30px);
+}
+.pitch__line {
+  max-width: 42ch;
+  font-size: clamp(0.98rem, 1.25vw, 1.18rem);
+  color: var(--ink-txt);
+}
+.pitch__cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: clamp(20px, 2.8vw, 34px);
+  padding: 10px 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-txt);
+  transition: color var(--t-fast);
+}
+.pitch__cue:hover { color: var(--flare); }
+.pitch__cue svg { width: 15px; height: 15px; }
+
+/* El reproductor. La caja ya trae su proporción, así que cambiar la
+   portada por el iframe no mueve nada de sitio. */
+.pitch__player {
+  position: relative;
+  width: min(320px, 78vw);
+  aspect-ratio: 9 / 16;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--ink-wash);
+  box-shadow:
+    0 2px 6px -2px rgba(0, 51, 102, 0.30),
+    0 30px 56px -28px rgba(0, 51, 102, 0.45);
+}
+.pitch__cover {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+.pitch__cover img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+/* Siempre visible: es la llamada a la acción de la sección, no un adorno
+   que aparece al pasar por encima. En móvil no habría hover que lo sacara. */
+.pitch__play {
+  position: absolute;
+  z-index: 2;
+  left: 50%; top: 50%;
+  width: 68px; height: 68px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--flare);
+  transition: transform var(--t-med) var(--ease-out);
+}
+.pitch__play svg { width: 23px; height: 23px; fill: var(--tinta); }
+.pitch__cover:hover .pitch__play,
+.pitch__cover:focus-visible .pitch__play { transform: translate(-50%, -50%) scale(1.09); }
+.pitch__player iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  border: 0;
+}
+
+/* =========================================================
    TRABAJO — el desfile, la dispersión y el abanico
    ========================================================= */
 .work {
@@ -1001,6 +1101,17 @@ h1, h2, h3, .bebas {
      da 3.66:1, que sirve para el titular (grande) pero no para 16px. */
   .hero__block { top: 6%; height: 42%; }
   .hero__word--shift { margin-left: clamp(14px, 6vw, 60px); }
+
+  /* La presentación se apila en el orden que manda: texto, video y solo
+     entonces la salida hacia el portafolio. */
+  .pitch__inner {
+    grid-template-columns: 1fr;
+    grid-template-areas: "texto" "player" "cue";
+    gap: clamp(24px, 6vw, 36px) 0;
+  }
+  .pitch__text { align-self: start; }
+  .pitch__player { width: min(78vw, 330px); justify-self: center; }
+  .pitch__cue { margin-top: 0; justify-self: start; }
 
   .proc__frags { grid-template-columns: repeat(6, 1fr); }
   .frag, .frag--lead, .proc__photo { grid-column: 1 / -1 !important; }

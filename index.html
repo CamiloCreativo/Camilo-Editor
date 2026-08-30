@@ -65,10 +65,51 @@
       <span class="edge edge--l" aria-hidden="true">Editor de video</span>
       <span class="edge edge--r" aria-hidden="true">Colombia · 2026</span>
 
-      <a href="#portafolio" class="hero__cue">
-        <span>Ver el trabajo</span>
+      <a href="#presentacion" class="hero__cue">
+        <span>Ver la presentación</span>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v15m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
+    </section>
+
+    <!-- ===== PRESENTACIÓN =====
+         `data-nav="off"`: no hay enlace a esta sección en el menú, así que se
+         queda fuera del resaltado de la nav. Sin eso, al pasar por el video
+         no quedaría ningún enlace encendido. Lo lee `onScroll()`. -->
+    <section id="presentacion" class="pitch" data-nav="off">
+      <div class="pitch__inner">
+        <div class="pitch__text">
+          <h2 class="pitch__title" data-split>Vamos a crear algo</h2>
+          <p class="pitch__line">
+            Un minuto para saber quién va a montar tus videos y cómo trabajo.
+            Si te cuadra, escríbeme.
+          </p>
+        </div>
+
+        <!-- Fachada: la portada es un enlace de verdad a YouTube, así que sin JS
+             el video sigue estando a un clic. script.js lo intercepta y lo
+             reproduce aquí mismo, sin sacar a nadie de la página. -->
+        <div class="pitch__player" id="pitchPlayer">
+          <a class="pitch__cover"
+             href="https://youtube.com/shorts/kqXkb8SfQBA"
+             target="_blank" rel="noopener noreferrer"
+             data-embed="https://youtube.com/shorts/kqXkb8SfQBA"
+             aria-label="Reproducir la presentación en video de Camilo Creativo">
+            <img src="https://img.youtube.com/vi/kqXkb8SfQBA/oardefault.jpg" alt="" loading="lazy"
+                 data-fallback="https://img.youtube.com/vi/kqXkb8SfQBA/hqdefault.jpg">
+            <span class="pitch__play">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg>
+            </span>
+          </a>
+        </div>
+
+        <!-- Hermano del reproductor, no hijo del texto: al apilarse en móvil
+             la flecha tiene que quedar DEBAJO del video. Arriba invitaría a
+             saltarse justo lo que la sección viene a enseñar. -->
+        <a href="#portafolio" class="pitch__cue">
+          <span>Ver el trabajo</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v15m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
     </section>
 
     <!-- ===== PORTAFOLIO ===== -->

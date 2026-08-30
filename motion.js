@@ -508,6 +508,28 @@
   }
 
   /* =======================================================
+     PRESENTACIÓN — la tarjeta y su línea entran una vez.
+     SIN PIN: el presupuesto sigue siendo dos secciones
+     fijadas —proceso y trabajo— y esta no entra en él.
+     El titular no necesita código: lleva `data-split` y
+     headings() ya recorre todos.
+     ======================================================= */
+  function pitch() {
+    const sec = document.querySelector('.pitch');
+    const player = document.getElementById('pitchPlayer');
+    if (!sec || !player) return;
+
+    const line = sec.querySelector('.pitch__line');
+    const cue = sec.querySelector('.pitch__cue');
+
+    gsap.from([player, line, cue].filter(Boolean), {
+      opacity: 0, y: 30, duration: 0.7, ease: 'expo.out', stagger: 0.08,
+      clearProps: 'transform',
+      scrollTrigger: { trigger: sec, start: 'top 82%', once: true }
+    });
+  }
+
+  /* =======================================================
      MÓVIL — sin pins. Versión corta que no secuestra el scroll.
      ======================================================= */
   function mobile() {
@@ -549,6 +571,7 @@
     hero();
     headings();
     ticker();
+    pitch();
     contact();
     wireFlip();
 
