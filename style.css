@@ -251,28 +251,39 @@ h1, h2, h3, .bebas {
 /* =========================================================
    REDES FLOTANTES
    Protagonistas a propósito — decisión de Camilo del
-   2026-09-06: naranja de fondo (es justo su papel, «lo que
-   hay que mirar o pulsar»), pulso continuo y anillo de aviso.
-   Por debajo de la nav (400) igual: si el menú móvil se abre,
-   lo tapa en vez de encimarse con él.
+   2026-09-06, ajustada el mismo día: la píldora con el nombre
+   de la red se veía mal (el texto se encimaba dentro del
+   círculo), así que se quitó del todo. Ahora es solo el
+   icono: grande, con relieve de disco esmaltado y animado.
+   Por debajo de la nav (400): si el menú móvil se abre, lo
+   tapa en vez de encimarse con él.
    ========================================================= */
 .social {
   position: fixed;
-  right: clamp(14px, 2.4vw, 28px);
-  bottom: clamp(14px, 2.4vw, 28px);
+  right: clamp(16px, 3vw, 34px);
+  bottom: clamp(16px, 3vw, 34px);
   z-index: 300;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 .social__link {
   position: relative;
   display: flex;
   align-items: center;
-  border-radius: 999px;
-  background: var(--flare);
+  justify-content: center;
+  width: clamp(64px, 8.4vw, 78px);
+  height: clamp(64px, 8.4vw, 78px);
+  border-radius: 50%;
   color: var(--tinta);
-  box-shadow: 0 10px 24px -10px rgba(0, 51, 102, 0.45);
+  /* Degradado tonal del mismo naranja cerrado —no es un color nuevo,
+     es luz sobre el mismo acento— para simular una esfera esmaltada. */
+  background: radial-gradient(circle at 32% 26%, #f5934f 0%, var(--flare) 52%, #ac4c0b 100%);
+  box-shadow:
+    0 16px 30px -10px rgba(227, 100, 20, 0.55),
+    0 6px 14px -4px rgba(0, 51, 102, 0.4),
+    inset 0 2px 3px rgba(255, 255, 255, 0.6),
+    inset 0 -7px 11px rgba(0, 0, 0, 0.3);
   transition: transform var(--t-med) var(--ease-out), box-shadow var(--t-med) var(--ease-out);
 }
 /* El anillo de aviso: se expande y se apaga, como una notificación. */
@@ -280,73 +291,66 @@ h1, h2, h3, .bebas {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   box-shadow: 0 0 0 0 rgba(227, 100, 20, 0.55);
-  animation: socialPing 2.8s ease-out infinite;
+  animation: socialPing 2.6s ease-out infinite;
   pointer-events: none;
   transition: opacity var(--t-fast);
 }
-.social__link:nth-child(2)::after { animation-delay: 1.3s; }
+.social__link:nth-child(2)::after { animation-delay: 1.2s; }
 
-.social__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 58px; height: 58px;
-  flex: 0 0 58px;
-  animation: socialBreathe 2.8s ease-in-out infinite;
+.social__link svg {
+  width: clamp(28px, 3.6vw, 34px);
+  height: clamp(28px, 3.6vw, 34px);
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.35));
+  animation: socialWiggle 2.6s ease-in-out infinite;
   transition: transform var(--t-fast) var(--ease-out);
 }
-.social__link:nth-child(2) .social__icon { animation-delay: 1.3s; }
-.social__icon svg { width: 24px; height: 24px; }
-
-/* La etiqueta vive colapsada: el botón es un círculo hasta que
-   alguien pasa por encima, y entonces se estira en píldora para
-   decir qué red es. */
-.social__label {
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  white-space: nowrap;
-  font-family: var(--font-titulo);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 1rem;
-  transition: max-width var(--t-med) var(--ease-out), opacity var(--t-fast), padding-right var(--t-med) var(--ease-out);
-}
+.social__link:nth-child(2) svg { animation-delay: 1.2s; }
 
 /* Solo en punteros con hover de verdad: en táctil, `:hover` se queda
-   pegado tras el toque y las dos píldoras se quedaban abiertas a la
-   vez — el mismo problema que ya resolvió `.piece` en el portafolio. */
+   pegado tras el toque — el mismo problema que ya resolvió `.piece`
+   en el portafolio con `@media (hover: none)`, aquí al revés. */
 @media (hover: hover) {
   .social__link:hover {
-    transform: translateY(-5px) scale(1.05);
-    box-shadow: 0 18px 34px -10px rgba(227, 100, 20, 0.6), 0 6px 16px -6px rgba(0, 51, 102, 0.4);
+    transform: translateY(-7px) scale(1.1);
+    box-shadow:
+      0 24px 40px -10px rgba(227, 100, 20, 0.65),
+      0 8px 18px -4px rgba(0, 51, 102, 0.45),
+      inset 0 2px 3px rgba(255, 255, 255, 0.65),
+      inset 0 -7px 11px rgba(0, 0, 0, 0.32);
   }
   .social__link:hover::after { animation: none; opacity: 0; }
-  .social__link:hover .social__icon { animation: none; transform: scale(1.1) rotate(-8deg); }
-  .social__link:hover .social__label { max-width: 150px; opacity: 1; padding-right: 20px; }
+  .social__link:hover svg { animation: none; transform: scale(1.22) rotate(-10deg); }
 }
 /* El teclado sí necesita el estado siempre, sin importar el puntero. */
 .social__link:focus-visible {
-  transform: translateY(-5px) scale(1.05);
-  box-shadow: 0 18px 34px -10px rgba(227, 100, 20, 0.6), 0 6px 16px -6px rgba(0, 51, 102, 0.4);
+  transform: translateY(-7px) scale(1.1);
+  box-shadow:
+    0 24px 40px -10px rgba(227, 100, 20, 0.65),
+    0 8px 18px -4px rgba(0, 51, 102, 0.45),
+    inset 0 2px 3px rgba(255, 255, 255, 0.65),
+    inset 0 -7px 11px rgba(0, 0, 0, 0.32);
   outline-color: var(--ink); /* el anillo de foco naranja por defecto se pierde sobre este fondo */
 }
 .social__link:focus-visible::after { animation: none; opacity: 0; }
-.social__link:focus-visible .social__icon { animation: none; transform: scale(1.1) rotate(-8deg); }
-.social__link:focus-visible .social__label { max-width: 150px; opacity: 1; padding-right: 20px; }
-.social__link:active { transform: translate(1px, 1px) scale(0.97); }
+.social__link:focus-visible svg { animation: none; transform: scale(1.22) rotate(-10deg); }
+/* «Mechanical press»: el relieve se aplana, como si el disco se hundiera. */
+.social__link:active {
+  transform: translateY(1px) scale(0.95);
+  box-shadow:
+    0 8px 16px -8px rgba(227, 100, 20, 0.5),
+    inset 0 3px 6px rgba(0, 0, 0, 0.38);
+}
 
 @keyframes socialPing {
   0%   { box-shadow: 0 0 0 0 rgba(227, 100, 20, 0.55); }
-  70%  { box-shadow: 0 0 0 18px rgba(227, 100, 20, 0); }
+  70%  { box-shadow: 0 0 0 20px rgba(227, 100, 20, 0); }
   100% { box-shadow: 0 0 0 0 rgba(227, 100, 20, 0); }
 }
-@keyframes socialBreathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.12); }
+@keyframes socialWiggle {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.16) rotate(-8deg); }
 }
 
 /* =========================================================
