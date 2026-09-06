@@ -249,6 +249,35 @@ h1, h2, h3, .bebas {
 .nav__toggle.is-open span:last-child { width: 26px; transform: translateY(-4px) rotate(-45deg); }
 
 /* =========================================================
+   REDES FLOTANTES
+   Por debajo de la nav (400) a propósito: si el menú móvil se
+   abre, lo tapa en vez de encimarse con él.
+   ========================================================= */
+.social {
+  position: fixed;
+  right: clamp(14px, 2.4vw, 28px);
+  bottom: clamp(14px, 2.4vw, 28px);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.social__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--ground);
+  box-shadow: 0 10px 22px -10px rgba(0, 51, 102, 0.55);
+  transition: background var(--t-fast), transform var(--t-fast);
+}
+.social__link svg { width: 20px; height: 20px; }
+.social__link:hover, .social__link:focus-visible { background: var(--flare); transform: translateY(-3px); }
+.social__link:active { transform: translate(1px, 1px); }
+
+/* =========================================================
    HERO — colisión de capas
    ========================================================= */
 .hero {
@@ -454,6 +483,47 @@ h1, h2, h3, .bebas {
   width: 100%; height: 100%;
   border: 0;
 }
+
+/* =========================================================
+   MARCA PERSONAL — distinta del portafolio a propósito.
+   Misma tarjeta que el resto del sitio: 18px de radio y la
+   sombra en dos capas, para que el embed de TikTok no desentone.
+   ========================================================= */
+.personal {
+  position: relative;
+  padding: clamp(70px, 10vw, 130px) 0;
+}
+.personal__inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
+.personal__text { max-width: 640px; margin-bottom: clamp(30px, 4vw, 56px); }
+.personal__title {
+  font-size: clamp(2.4rem, 6.5vw, 5.6rem);
+  color: var(--ink);
+  margin-bottom: clamp(14px, 2vw, 22px);
+}
+.personal__line {
+  max-width: 48ch;
+  font-size: clamp(0.98rem, 1.25vw, 1.18rem);
+  color: var(--ink-txt);
+}
+.personal__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(24px, 3vw, 40px);
+}
+.personal__card {
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--ink-wash);
+  box-shadow:
+    0 2px 6px -2px rgba(0, 51, 102, 0.30),
+    0 30px 56px -28px rgba(0, 51, 102, 0.45);
+}
+/* El embed trae su propio margen: se anula para que la tarjeta lo controle. */
+.personal__card .tiktok-embed { margin: 0 !important; }
 
 /* =========================================================
    TRABAJO — el desfile, la dispersión y el abanico
@@ -666,6 +736,17 @@ h1, h2, h3, .bebas {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-txt);
+}
+/* Tierra y no naranja: sobre el fondo claro el naranja no llega a 4.5:1
+   en texto pequeño. Tierra sí (9.73:1) y es justo su papel — «un dato». */
+.piece__highlight {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--earth);
 }
 .piece[hidden] { display: none; }
 
@@ -1112,6 +1193,9 @@ h1, h2, h3, .bebas {
   .pitch__text { align-self: start; }
   .pitch__player { width: min(78vw, 330px); justify-self: center; }
   .pitch__cue { margin-top: 0; justify-self: start; }
+
+  .personal__grid { justify-content: center; }
+  .personal__card { width: min(78vw, 330px); }
 
   .proc__frags { grid-template-columns: repeat(6, 1fr); }
   .frag, .frag--lead, .proc__photo { grid-column: 1 / -1 !important; }

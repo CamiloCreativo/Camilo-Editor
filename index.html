@@ -38,10 +38,23 @@
     <nav class="nav__links" id="navLinks" aria-label="Principal">
       <a href="#inicio" class="nav__link">Inicio</a>
       <a href="#portafolio" class="nav__link">Trabajo</a>
+      <a href="#personal" class="nav__link">Personal</a>
       <a href="#perfil" class="nav__link">Proceso</a>
       <a href="#contacto" class="nav__link">Contacto</a>
     </nav>
   </header>
+
+  <!-- ===== REDES FLOTANTES =====
+       Fijas sobre toda la página. z-index por debajo de la nav para que,
+       si el menú móvil se abre, lo tape en vez de encimarse con él. -->
+  <div class="social" role="group" aria-label="Redes de Camilo Creativo">
+    <a class="social__link" href="https://www.tiktok.com/@camilocreativo0?_r=1&_t=ZS-99VxXNRFcgu" target="_blank" rel="noopener noreferrer" aria-label="Camilo Creativo en TikTok">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9.4" cy="16.6" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 3v13.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M13 3.3c.4 3.2 2.5 5.3 5.6 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </a>
+    <a class="social__link" href="https://www.instagram.com/camilocreativo7?stkn=MW8wZXdnejEybHpl" target="_blank" rel="noopener noreferrer" aria-label="Camilo Creativo en Instagram">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor"/></svg>
+    </a>
+  </div>
 
   <main>
     <!-- ===== HERO ===== -->
@@ -147,6 +160,41 @@
       </div>
     </section>
 
+    <!-- ===== MARCA PERSONAL =====
+         Distinta del portafolio a propósito: el portafolio enseña encargos,
+         esto enseña cómo suena Camilo sin cliente de por medio. Embed
+         oficial de TikTok (blockquote + embed.js): sin JS el enlace al
+         perfil sigue funcionando, igual que la fachada de la presentación. -->
+    <section id="personal" class="personal">
+      <div class="personal__inner">
+        <div class="personal__text">
+          <h2 class="personal__title" data-split>Marca personal</h2>
+          <p class="personal__line">
+            El portafolio muestra encargos. Aquí subo lo que edito para mí —
+            así sueno sin cliente de por medio.
+          </p>
+        </div>
+
+        <div class="personal__grid">
+          <div class="personal__card">
+            <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@camilocreativo0/video/7679848889742118152" data-video-id="7679848889742118152" style="max-width: 325px; min-width: 260px;">
+              <section>
+                <a target="_blank" rel="noopener noreferrer" title="@camilocreativo0" href="https://www.tiktok.com/@camilocreativo0?refer=embed">@camilocreativo0</a>
+              </section>
+            </blockquote>
+          </div>
+
+          <div class="personal__card">
+            <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@camilocreativo0/video/7682210186479684871" data-video-id="7682210186479684871" style="max-width: 325px; min-width: 260px;">
+              <section>
+                <a target="_blank" rel="noopener noreferrer" title="@camilocreativo0" href="https://www.tiktok.com/@camilocreativo0?refer=embed">@camilocreativo0</a>
+              </section>
+            </blockquote>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== PROCESO ===== -->
     <section id="perfil" class="proc">
       <div class="proc__stage">
@@ -238,5 +286,9 @@
 
   <script src="script.js"></script>
   <script src="motion.js"></script>
+
+  <!-- Embed oficial de TikTok: una sola vez sirve a todos los blockquote
+       .tiktok-embed de la página, sin importar cuántos haya. -->
+  <script async src="https://www.tiktok.com/embed.js"></script>
 </body>
 </html>

@@ -13,6 +13,8 @@
      - orientation: "portrait" (Reels/Shorts) o "landscape" (narrativos)
      - tags: arreglo de etiquetas del video (puedes poner una o varias),
        por ejemplo: tags: ['Publicidad', 'Motion Graphics']
+     - highlight: opcional. Texto corto para resaltar un dato de la pieza
+       (por ejemplo, vistas por día). Déjalo fuera del objeto si no aplica.
      ========================================================= */
   const categories = [
     {
@@ -38,7 +40,8 @@
       title: 'Videos narrativos',
       description: 'Producciones con ritmo narrativo, pensadas para mantener la atención del espectador y transmitir mensajes claros en formatos más largos.',
       videos: [
-        { title: 'Introspección de un rodaje', tags: ['Mini documental', 'Ficción', 'Cine'], orientation: 'landscape', embed: 'https://youtu.be/HvZB4duQxyM?si=-sdYFZnEhtfPqyg2', thumbnail: 'https://youtu.be/HvZB4duQxyM?si=-sdYFZnEhtfPqyg2' }
+        { title: 'Introspección de un rodaje', tags: ['Mini documental', 'Ficción', 'Cine'], orientation: 'landscape', embed: 'https://youtu.be/HvZB4duQxyM?si=-sdYFZnEhtfPqyg2', thumbnail: 'https://youtu.be/HvZB4duQxyM?si=-sdYFZnEhtfPqyg2' },
+        { title: 'Carnotaurus: El Último Gran Depredador de Sudamérica', tags: ['Mini documental', 'Faceless'], orientation: 'landscape', embed: 'https://youtu.be/jXqpq4qKemk?si=0qUZVyJCh6bg7U-w', thumbnail: 'https://youtu.be/jXqpq4qKemk?si=0qUZVyJCh6bg7U-w', highlight: '+100 mil vistas/día en sus primeros días' }
       ]
     },
     {
@@ -166,6 +169,7 @@
         '<span class="piece__meta">' +
           '<span class="piece__name">' + esc(v.title) + '</span>' +
           (tags.length ? '<span class="piece__tags">' + esc(tags.join(' · ')) + '</span>' : '') +
+          (v.highlight ? '<span class="piece__highlight">' + esc(v.highlight) + '</span>' : '') +
         '</span>' +
       '</button>';
     }).join('');

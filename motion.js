@@ -530,6 +530,25 @@
   }
 
   /* =======================================================
+     MARCA PERSONAL — misma lógica que la presentación: sin
+     pin, entra una vez. El titular lleva `data-split` y ya
+     lo recorre headings().
+     ======================================================= */
+  function personal() {
+    const sec = document.querySelector('.personal');
+    if (!sec) return;
+
+    const line = sec.querySelector('.personal__line');
+    const cards = gsap.utils.toArray('.personal__card', sec);
+
+    gsap.from([line, ...cards].filter(Boolean), {
+      opacity: 0, y: 30, duration: 0.7, ease: 'expo.out', stagger: 0.1,
+      clearProps: 'transform',
+      scrollTrigger: { trigger: sec, start: 'top 82%', once: true }
+    });
+  }
+
+  /* =======================================================
      MÓVIL — sin pins. Versión corta que no secuestra el scroll.
      ======================================================= */
   function mobile() {
@@ -572,6 +591,7 @@
     headings();
     ticker();
     pitch();
+    personal();
     contact();
     wireFlip();
 
