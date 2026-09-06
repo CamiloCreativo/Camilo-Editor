@@ -530,6 +530,23 @@
   }
 
   /* =======================================================
+     REDES FLOTANTES — el pulso y el anillo ya viven en CSS
+     (así siguen sin JS). Esto solo añade la entrada: llegan
+     de rebote un instante después de que el hero se asiente,
+     para no competir con la palabra armándose.
+     ======================================================= */
+  function social() {
+    const links = gsap.utils.toArray('.social__link');
+    if (!links.length) return;
+
+    gsap.from(links, {
+      opacity: 0, scale: 0.4, y: 40,
+      duration: 0.8, ease: 'back.out(1.7)', stagger: 0.12, delay: 0.5,
+      clearProps: 'transform'
+    });
+  }
+
+  /* =======================================================
      MARCA PERSONAL — misma lógica que la presentación: sin
      pin, entra una vez. El titular lleva `data-split` y ya
      lo recorre headings().
@@ -592,6 +609,7 @@
     ticker();
     pitch();
     personal();
+    social();
     contact();
     wireFlip();
 
