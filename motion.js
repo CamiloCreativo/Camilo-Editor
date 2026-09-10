@@ -566,6 +566,26 @@
   }
 
   /* =======================================================
+     PRECIOS — misma lógica que MARCA PERSONAL: sin pin, entra
+     una vez. El titular lleva `data-split` y ya lo recorre
+     headings().
+     ======================================================= */
+  function precios() {
+    const sec = document.querySelector('.precios');
+    if (!sec) return;
+
+    const leads = gsap.utils.toArray('.precios__lead', sec);
+    const table = sec.querySelector('.precios__table-wrap');
+    const extras = sec.querySelector('.precios__extras');
+
+    gsap.from([...leads, table, extras].filter(Boolean), {
+      opacity: 0, y: 30, duration: 0.7, ease: 'expo.out', stagger: 0.1,
+      clearProps: 'transform',
+      scrollTrigger: { trigger: sec, start: 'top 82%', once: true }
+    });
+  }
+
+  /* =======================================================
      MÓVIL — sin pins. Versión corta que no secuestra el scroll.
      ======================================================= */
   function mobile() {
@@ -609,6 +629,7 @@
     ticker();
     pitch();
     personal();
+    precios();
     social();
     contact();
     wireFlip();

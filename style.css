@@ -1044,6 +1044,139 @@ h1, h2, h3, .bebas {
 }
 
 /* =========================================================
+   PRECIOS — el menú y la tarifa. Sin cajas: una sola tabla con
+   dos grupos ("Qué incluye" / "Precio según duración") para no
+   repetir las cabeceras Básico/Medio/Pro, envuelta en un
+   contenedor con scroll horizontal para pantallas angostas.
+   ========================================================= */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.precios {
+  position: relative;
+  padding: clamp(80px, 11vw, 150px) 0;
+}
+.precios__inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
+.precios__title {
+  font-size: clamp(2.4rem, 6.5vw, 5.6rem);
+  color: var(--ink);
+  margin-bottom: clamp(20px, 3vw, 32px);
+}
+.precios__lead {
+  max-width: 62ch;
+  margin: 0 0 14px;
+  font-size: clamp(0.98rem, 1.25vw, 1.18rem);
+  color: var(--ink-txt);
+}
+.precios__lead:last-of-type { margin-bottom: clamp(36px, 5vw, 56px); }
+.precios__lead strong { color: var(--ink); font-weight: 700; }
+
+.precios__scroll-hint {
+  display: none;
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  color: var(--ink-txt);
+}
+.precios__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.precios__table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+.precios__table th,
+.precios__table td {
+  text-align: left;
+  padding: 11px 16px 11px 0;
+  font-size: clamp(0.86rem, 1vw, 0.98rem);
+  border-bottom: 1px solid var(--ink-line);
+  white-space: nowrap;
+}
+.precios__table thead th {
+  font-family: var(--font-titulo);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+  color: var(--ink);
+  border-bottom: 1.6px solid var(--ink);
+}
+.precios__table tbody th[scope="row"] {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: normal;
+}
+.precios__table td { color: var(--ink-txt); }
+.precios__group th {
+  padding: 26px 0 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--earth);
+  border-bottom: none;
+  opacity: 0.85;
+}
+.precios__group:first-child th { padding-top: 6px; }
+
+.precios__note {
+  margin: 12px 0 clamp(40px, 5vw, 64px);
+  font-size: 0.86rem;
+  color: var(--ink-txt);           /* ink-dim es solo para texto ≥24px */
+}
+
+.precios__extras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(28px, 4vw, 48px);
+}
+.precios__extras h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-cuerpo);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.72;
+}
+.precios__extras p {
+  margin: 0 0 14px;
+  font-size: 0.92rem;
+  color: var(--ink-txt);
+}
+.precios__list { margin: 0; }
+.precios__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--ink-line);
+}
+.precios__row:last-child { border-bottom: 1px solid var(--ink-line); }
+.precios__row dt { margin: 0; font-size: 0.9rem; color: var(--ink-txt); }
+.precios__row dd { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+
+.precios__closing {
+  margin: clamp(32px, 4vw, 48px) 0 0;
+  max-width: 52ch;
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  color: var(--ink);
+}
+
+/* =========================================================
    CONTACTO
    ========================================================= */
 .contact {
@@ -1276,6 +1409,13 @@ h1, h2, h3, .bebas {
   .proc__frags { grid-template-columns: repeat(6, 1fr); }
   .frag, .frag--lead, .proc__photo { grid-column: 1 / -1 !important; }
   .proc__photo { max-width: 140px; }
+
+  .precios__extras { grid-template-columns: 1fr; }
+  .precios__scroll-hint { display: block; }
+  .precios__table { min-width: 0; }
+  .precios__table th, .precios__table td { padding-right: 22px; }
+  .precios__table thead th:first-child,
+  .precios__table tbody th[scope="row"] { width: 40%; }
 
   /* MÓVIL — carrusel tradicional, no abanico.
      Una tira que corre de izquierda a derecha, anclada al borde izquierdo

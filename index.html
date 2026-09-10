@@ -40,6 +40,7 @@
       <a href="#portafolio" class="nav__link">Trabajo</a>
       <a href="#personal" class="nav__link">Personal</a>
       <a href="#perfil" class="nav__link">Proceso</a>
+      <a href="#precios" class="nav__link">Precios</a>
       <a href="#contacto" class="nav__link">Contacto</a>
     </nav>
   </header>
@@ -228,6 +229,132 @@
 
       <div class="ticker" aria-hidden="true">
         <div class="ticker__row" id="tickerRow"></div>
+      </div>
+    </section>
+
+    <!-- ===== PRECIOS =====
+         Una sola tabla con dos grupos —qué incluye, cuánto cuesta— para no
+         repetir las cabeceras Básico/Medio/Pro. Envuelta en un contenedor
+         con scroll horizontal: en pantallas angostas se desliza en vez de
+         aplastar los números. -->
+    <section id="precios" class="precios">
+      <div class="precios__inner">
+        <h2 class="precios__title" data-split>Precios</h2>
+
+        <p class="precios__lead">
+          Cobro por pieza terminada, no por hora: sabes el precio antes de que
+          empecemos. Tú me envías el material —grabación, música, efectos,
+          guion— y yo te devuelvo el video listo para publicar.
+        </p>
+        <p class="precios__lead">
+          Corrección de audio y de color siempre van incluidas. Cada pieza
+          trae una ronda de ajustes en <strong>Básico</strong>, y dos en
+          <strong>Medio</strong> y <strong>Pro</strong>; una ronda extra
+          tiene un costo aparte. No trabajo por debajo de $15, sin importar
+          cuán corto sea el video.
+        </p>
+
+        <p class="precios__scroll-hint">Desliza para ver Medio y Pro →</p>
+        <div class="precios__table-wrap">
+          <table class="precios__table">
+            <caption class="visually-hidden">
+              Qué incluye y cuánto cuesta cada nivel de edición, según la duración del video
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">Básico</th>
+                <th scope="col">Medio</th>
+                <th scope="col">Pro</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="precios__group"><th colspan="4" scope="colgroup">Qué incluye</th></tr>
+              <tr>
+                <th scope="row">Cortes y ritmo</th>
+                <td>Sí</td><td>Sí</td><td>Sí</td>
+              </tr>
+              <tr>
+                <th scope="row">Corrección de audio y color</th>
+                <td>Sí</td><td>Sí</td><td>Sí</td>
+              </tr>
+              <tr>
+                <th scope="row">Transiciones</th>
+                <td>Simples</td><td>Dinámicas</td><td>Creativas, a medida</td>
+              </tr>
+              <tr>
+                <th scope="row">Zooms y reencuadres</th>
+                <td>—</td><td>Sí</td><td>Sí</td>
+              </tr>
+              <tr>
+                <th scope="row">Subtítulos</th>
+                <td>Sí</td><td>Sí</td><td>Sí</td>
+              </tr>
+              <tr>
+                <th scope="row">Texto en pantalla</th>
+                <td>Sencillo, estático</td><td>Animado</td><td>Animado y estilizado</td>
+              </tr>
+              <tr>
+                <th scope="row">Motion graphics</th>
+                <td>—</td><td>—</td><td>Sí</td>
+              </tr>
+
+              <tr class="precios__group"><th colspan="4" scope="colgroup">Precio según duración</th></tr>
+              <tr>
+                <th scope="row">Menos de 1 min</th>
+                <td>$15</td><td>$25</td><td>$50</td>
+              </tr>
+              <tr>
+                <th scope="row">1–2 min</th>
+                <td>$15–$30</td><td>$25–$50</td><td>$50–$100</td>
+              </tr>
+              <tr>
+                <th scope="row">2–5 min</th>
+                <td>$30–$60</td><td>$50–$100</td><td>$100–$230</td>
+              </tr>
+              <tr>
+                <th scope="row">5–10 min</th>
+                <td>$60–$90</td><td>$100–$170</td><td>$230–$450</td>
+              </tr>
+              <tr>
+                <th scope="row">10–15 min</th>
+                <td>$90–$120</td><td>$170–$220</td><td>$450–$650</td>
+              </tr>
+              <tr>
+                <th scope="row">15–20 min</th>
+                <td>$120–$140</td><td>$220–$280</td><td>$650–$850</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="precios__note">¿Más de 20 minutos? Escríbeme y lo cotizamos sobre esta misma tabla.</p>
+
+        <div class="precios__extras">
+          <div>
+            <h3>Si te falta algo</h3>
+            <p>Estos precios asumen que tú traes el material. Si necesitas que yo resuelva algo de esto, se suma al presupuesto:</p>
+            <dl class="precios__list">
+              <div class="precios__row"><dt>Buscar y curar B-roll</dt><dd>$5–10 / min usado</dd></div>
+              <div class="precios__row"><dt>Elegir música con licencia</dt><dd>$10 / video</dd></div>
+              <div class="precios__row"><dt>SFX fuera de mi librería</dt><dd>$5–15 / video</dd></div>
+              <div class="precios__row"><dt>Escribir o ajustar el guion</dt><dd>$10 / min de guion</dd></div>
+              <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$15–25 / video</dd></div>
+              <div class="precios__row"><dt>Miniatura para YouTube</dt><dd>$10–15</dd></div>
+            </dl>
+          </div>
+          <div>
+            <h3>Otros recargos</h3>
+            <p>Y estos factores cambian el precio final, sin importar el nivel:</p>
+            <dl class="precios__list">
+              <div class="precios__row"><dt>Entrega en 1440p / 2K</dt><dd>+15%</dd></div>
+              <div class="precios__row"><dt>Entrega en 2160p / 4K</dt><dd>+25%</dd></div>
+              <div class="precios__row"><dt>Sincronizar 2+ cámaras</dt><dd>+15–20%</dd></div>
+              <div class="precios__row"><dt>Color avanzado (LUT a medida)</dt><dd>+10–15%</dd></div>
+            </dl>
+          </div>
+        </div>
+
+        <p class="precios__closing">¿No sabes en qué nivel cae tu proyecto? Cuéntame qué tienes y te digo.</p>
       </div>
     </section>
 
