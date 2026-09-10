@@ -717,7 +717,7 @@
     const nombre = details && details.nombre;
     if (!window.jspdf || !window.jspdf.jsPDF) {
       showToast('No pude generar el PDF: la librería no cargó. Intenta de nuevo.');
-      return;
+      return 'error';
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -939,7 +939,34 @@
     doc.rect(0, 0, pageW, 10, 'F');
     layout(scale, true);
 
-    doc.save('cotizacion-camilo-creativo' + (nombre ? '-' + slugify(nombre) : '') + '.pdf');
+    const filename = 'cotizacion-camilo-creativo' + (nombre ? '-' + slugify(nombre) : '') + '.pdf';
+
+    /* `doc.save()` simula un clic en un <a download> hacia un blob: URL.
+       En cualquier navegador de iOS (todos corren WebKit, no solo Safari)
+       esa propiedad existe en el DOM pero el sistema la ignora: en vez de
+       guardar el archivo, navega al blob sin descargar nada — así que en
+       celular los tres botones de PDF (calculadora, detalles, "Confirmar y
+       enviar") se sentían rotos por completo. Abrir el mismo blob en una
+       pestaña nueva sí funciona ahí: cae en el visor de PDF nativo, desde
+       donde compartir/guardar es un toque. */
+    if (isIOSDevice()) {
+      const opened = window.open(doc.output('bloburl'), '_blank');
+      if (!opened) {
+        showToast('El navegador bloqueó la pestaña del PDF — permite ventanas emergentes en este sitio e intenta de nuevo.');
+        return 'error';
+      }
+      return 'tab';
+    }
+    doc.save(filename);
+    return 'download';
+  }
+
+  /* iPadOS se anuncia como "Macintosh" desde 2019, así que el user agent
+     solo no alcanza: se distingue de un Mac de verdad por tener pantalla
+     táctil (`maxTouchPoints`), algo que ningún Mac trae. */
+  function isIOSDevice() {
+    return /iP(hone|od|ad)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
   /* "Ana Pérez" -> "ana-perez", para nombrar el PNG de la cotización con
@@ -1052,7 +1079,8 @@
   }
   if (calcExportBtn) calcExportBtn.addEventListener('click', () => {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
-    generatePdf(calcCurrentState, calcCurrentResult);
+    const mode = generatePdf(calcCurrentState, calcCurrentResult);
+    if (mode === 'tab') showToast('Tu cotización se abrió en una pestaña nueva — toca "Compartir" para guardarla como PDF.');
   });
   if (calcWhatsappBtn) calcWhatsappBtn.addEventListener('click', () => {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
@@ -1181,16 +1209,27 @@
     const details = readDetailsState();
     const text = buildDetailedWhatsappText(calcCurrentState, calcCurrentResult, details);
 
-    generatePdf(calcCurrentState, calcCurrentResult, details);
+    /* WhatsApp abre primero. En iOS, generatePdf() también puede abrir una
+       pestaña (ver isIOSDevice() más abajo) — si el bloqueador de
+       ventanas emergentes de Safari solo deja pasar una por gesto, que se
+       sacrifique la del PDF y no la de WhatsApp, que es "el canal que de
+       verdad cierra una consulta" (ver más abajo, "Los botones de enviar
+       cambiaron de peso visual"). */
     window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
-    showToast('Descargué tu cotización en PDF y te abrí WhatsApp con todos los detalles — mándale el PDF también si quieres que Camilo lo vea completo.');
+    const mode = generatePdf(calcCurrentState, calcCurrentResult, details);
+    if (mode === 'tab') {
+      showToast('Te abrí WhatsApp con todos los detalles — tu cotización en PDF se abrió en otra pestaña, mándasela también si quieres que Camilo la vea completa.');
+    } else if (mode !== 'error') {
+      showToast('Descargué tu cotización en PDF y te abrí WhatsApp con todos los detalles — mándale el PDF también si quieres que Camilo lo vea completo.');
+    }
     closeDetailsModal();
   }
 
   const detailsPdfBtn = document.getElementById('detailsPdfBtn');
   if (detailsPdfBtn) detailsPdfBtn.addEventListener('click', () => {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
-    generatePdf(calcCurrentState, calcCurrentResult, readDetailsState());
+    const mode = generatePdf(calcCurrentState, calcCurrentResult, readDetailsState());
+    if (mode === 'tab') showToast('Tu cotización se abrió en una pestaña nueva — toca "Compartir" para guardarla como PDF.');
   });
   /* Dos botones —arriba y al final del formulario, ya largo con guion,
      tags y especificaciones de exportación— para que nadie tenga que
