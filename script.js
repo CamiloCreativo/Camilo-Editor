@@ -446,11 +446,180 @@
   }
 
   document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeModal));
+
+  /* ---------- Calculadora de precios ----------
+     PRICING es un espejo de la tabla #precios de index.html. Si esa tabla
+     cambia, este objeto se actualiza a mano también: no hay una sola
+     fuente de verdad para los dos, y por ahora eso es preferible a que
+     script.js tenga que parsear el texto de las celdas para adivinar los
+     números.
+
+     Los precios de la tabla son rangos porque el detalle real de un
+     proyecto los mueve. Cada extra "de rango" usa aquí su punto medio,
+     así que el total que arma la calculadora es un estimado de verdad,
+     no una regla de tres exacta — por eso el resultado dice "estimado"
+     y no "cotización". */
+  const PRICING = {
+    tiers: {
+      basico: { label: 'Básico', points: [[1, 15], [2, 30], [5, 60], [10, 90], [15, 120], [20, 140]] },
+      medio: { label: 'Medio', points: [[1, 25], [2, 50], [5, 100], [10, 170], [15, 220], [20, 280]] },
+      pro: { label: 'Pro', points: [[1, 50], [2, 100], [5, 230], [10, 450], [15, 650], [20, 850]] }
+    },
+    extras: [
+      { id: 'broll', label: 'Buscar y curar B-roll', kind: 'perMin', rate: 7.5 },      // $5–10/min, punto medio
+      { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
+      { id: 'sfx', label: 'SFX fuera de mi librería', kind: 'flat', amount: 10 },      // $5–15, punto medio
+      { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio
+      { id: 'miniatura', label: 'Miniatura para YouTube', kind: 'flat', amount: 12 }    // $10–15, punto medio
+    ],
+    resolucion: {
+      sd: { label: 'Hasta 1080p', pct: 0 },
+      '2k': { label: '1440p / 2K', pct: 0.15 },
+      '4k': { label: '2160p / 4K', pct: 0.25 }
+    },
+    multicamPct: 0.18 // +15–20%, punto medio
+  };
+
+  /* Interpolación lineal por tramos entre los puntos (minuto, precio) de
+     la tabla. Antes del primer punto la tarifa es plana (regla del
+     catálogo: un video de 20 segundos no cuesta menos que uno de 1
+     minuto). Después del último punto, extiende la tarifa marginal del
+     último tramo — igual que dice la nota bajo la tabla. */
+  function priceForDuration(tierKey, minutes) {
+    const points = PRICING.tiers[tierKey].points;
+    const m = Math.max(0, minutes);
+    if (m <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++) {
+      const [m0, p0] = points[i - 1];
+      const [m1, p1] = points[i];
+      if (m <= m1) return p0 + (m - m0) / (m1 - m0) * (p1 - p0);
+    }
+    const [m0, p0] = points[points.length - 2];
+    const [m1, p1] = points[points.length - 1];
+    const rate = (p1 - p0) / (m1 - m0);
+    return p1 + rate * (m - m1);
+  }
+
+  function readCalcState() {
+    const calcModal = document.getElementById('calcModal');
+    if (!calcModal) return null;
+    const tier = (calcModal.querySelector('input[name="calcTier"]:checked') || {}).value || 'basico';
+    const resolucion = (calcModal.querySelector('input[name="calcRes"]:checked') || {}).value || 'sd';
+    const minInput = document.getElementById('calcMin');
+    const minutes = minInput ? Math.max(0, Number(minInput.value) || 0) : 1;
+    const extras = Array.from(calcModal.querySelectorAll('input[name="calcExtra"]:checked')).map(el => el.value);
+    const multicamEl = document.getElementById('calcMulticam');
+    const multicam = !!(multicamEl && multicamEl.checked);
+    return { tier, minutes, resolucion, extras, multicam };
+  }
+
+  function computeEstimate(state) {
+    const base = priceForDuration(state.tier, state.minutes);
+    let extrasTotal = 0;
+    state.extras.forEach(id => {
+      const ex = PRICING.extras.find(e => e.id === id);
+      if (!ex) return;
+      extrasTotal += ex.kind === 'perMin' ? ex.rate * state.minutes : ex.amount;
+    });
+    const subtotal = base + extrasTotal;
+    let pct = PRICING.resolucion[state.resolucion] ? PRICING.resolucion[state.resolucion].pct : 0;
+    if (state.multicam) pct += PRICING.multicamPct;
+    const total = subtotal * (1 + pct);
+    return { base, extrasTotal, pct, total };
+  }
+
+  let calcCurrentState = null;
+  let calcCurrentResult = null;
+
+  function updateCalc() {
+    const state = readCalcState();
+    if (!state) return;
+    const result = computeEstimate(state);
+    calcCurrentState = state;
+    calcCurrentResult = result;
+
+    const totalEl = document.getElementById('calcTotal');
+    if (totalEl) totalEl.textContent = '$' + Math.round(result.total);
+
+    const noteEl = document.getElementById('calcLongNote');
+    if (noteEl) noteEl.hidden = state.minutes <= 20;
+  }
+
+  function buildPrintSummary(state, result) {
+    const tierLabel = PRICING.tiers[state.tier].label;
+    const rows = [
+      ['Nivel', tierLabel],
+      ['Duración', state.minutes + ' min']
+    ];
+    if (state.extras.length) {
+      const names = state.extras.map(id => (PRICING.extras.find(e => e.id === id) || {}).label).filter(Boolean);
+      if (names.length) rows.push(['Extras', names.join(', ')]);
+    }
+    if (state.resolucion !== 'sd') rows.push(['Resolución', PRICING.resolucion[state.resolucion].label]);
+    if (state.multicam) rows.push(['Multicámara', 'Sí']);
+
+    const body = document.getElementById('calcPrintBody');
+    if (body) {
+      body.innerHTML = rows.map(([k, v]) =>
+        '<div class="row"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>'
+      ).join('');
+    }
+    const totalEl = document.getElementById('calcPrintTotal');
+    if (totalEl) totalEl.textContent = '$' + Math.round(result.total) + ' (estimado)';
+  }
+
+  const calcModal = document.getElementById('calcModal');
+  const calcOpenBtn = document.getElementById('calcOpenBtn');
+  const calcExportBtn = document.getElementById('calcExportBtn');
+  let calcLastFocused = null;
+
+  function openCalcModal() {
+    if (!calcModal) return;
+    calcLastFocused = document.activeElement;
+    updateCalc();
+    calcModal.classList.add('is-open');
+    calcModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    const first = calcModal.querySelector('.calc__pill input:checked, input, button');
+    if (first) first.focus();
+  }
+
+  function closeCalcModal() {
+    if (!calcModal) return;
+    calcModal.classList.remove('is-open');
+    calcModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (calcLastFocused && calcLastFocused.focus) calcLastFocused.focus();
+  }
+
+  if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalcModal);
+  if (calcModal) {
+    calcModal.querySelectorAll('input').forEach(el => el.addEventListener('change', updateCalc));
+    const minInput = document.getElementById('calcMin');
+    if (minInput) minInput.addEventListener('input', updateCalc);
+  }
+  if (calcExportBtn) calcExportBtn.addEventListener('click', () => {
+    if (!calcCurrentState || !calcCurrentResult) updateCalc();
+    buildPrintSummary(calcCurrentState, calcCurrentResult);
+    window.print();
+  });
+  document.querySelectorAll('[data-close-calc]').forEach(el => el.addEventListener('click', closeCalcModal));
+
+  /* Escape y el atrapa-foco valen para el modal que esté abierto, sea el
+     de video o el de la calculadora — solo puede haber uno a la vez,
+     porque el fondo del que está abierto bloquea el clic al disparador
+     del otro. */
+  function openModalEl() {
+    if (modal && modal.classList.contains('is-open')) return modal;
+    if (calcModal && calcModal.classList.contains('is-open')) return calcModal;
+    return null;
+  }
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && modal && modal.classList.contains('is-open')) closeModal();
-    // El foco no se escapa del modal mientras está abierto.
-    if (e.key === 'Tab' && modal && modal.classList.contains('is-open')) {
-      const focusables = modal.querySelectorAll('button, iframe, [href]');
+    const open = openModalEl();
+    if (!open) return;
+    if (e.key === 'Escape') { open === modal ? closeModal() : closeCalcModal(); }
+    if (e.key === 'Tab') {
+      const focusables = open.querySelectorAll('button, iframe, [href], input, select, textarea');
       if (!focusables.length) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];

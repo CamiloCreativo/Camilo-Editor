@@ -364,6 +364,11 @@
         </div>
 
         <p class="precios__closing">¿No sabes en qué nivel cae tu proyecto? Cuéntame qué tienes y te digo.</p>
+
+        <button type="button" class="precios__calc-btn" id="calcOpenBtn">
+          Calcula un estimado
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19L19 5m0 0H8m11 0v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     </section>
 
@@ -408,6 +413,79 @@
       </button>
       <div class="modal__video" id="modalVideo"></div>
     </div>
+  </div>
+
+  <!-- ===== MODAL DE LA CALCULADORA =====
+       Los números aquí dentro (PRICING en script.js) son un espejo de la
+       tabla de #precios. Si esa tabla cambia, este objeto se actualiza a
+       mano también — no hay una sola fuente de verdad para los dos. -->
+  <div class="modal calc-modal" id="calcModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+    <div class="modal__backdrop" data-close-calc></div>
+    <div class="modal__content calc__content">
+      <button class="modal__close" data-close-calc aria-label="Cerrar calculadora">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      </button>
+
+      <h3 id="calcTitle" class="calc__title">Calcula tu estimado</h3>
+
+      <div class="calc__field">
+        <span class="calc__label">Nivel</span>
+        <div class="calc__pills" role="radiogroup" aria-label="Nivel de edición">
+          <label class="calc__pill"><input type="radio" name="calcTier" value="basico" checked><span>Básico</span></label>
+          <label class="calc__pill"><input type="radio" name="calcTier" value="medio"><span>Medio</span></label>
+          <label class="calc__pill"><input type="radio" name="calcTier" value="pro"><span>Pro</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <label class="calc__label" for="calcMin">Duración del video (minutos)</label>
+        <input class="calc__number" type="number" id="calcMin" min="0" max="60" step="1" value="1" inputmode="numeric">
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Si te falta algo</span>
+        <div class="calc__checks">
+          <label><input type="checkbox" name="calcExtra" value="broll"><span>Buscar y curar B-roll</span></label>
+          <label><input type="checkbox" name="calcExtra" value="musica"><span>Música con licencia</span></label>
+          <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX fuera de mi librería</span></label>
+          <label><input type="checkbox" name="calcExtra" value="locucion"><span>Locución o voz en off (IA)</span></label>
+          <label><input type="checkbox" name="calcExtra" value="miniatura"><span>Miniatura para YouTube</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Resolución de entrega</span>
+        <div class="calc__pills" role="radiogroup" aria-label="Resolución de entrega">
+          <label class="calc__pill"><input type="radio" name="calcRes" value="sd" checked><span>Hasta 1080p</span></label>
+          <label class="calc__pill"><input type="radio" name="calcRes" value="2k"><span>1440p / 2K</span></label>
+          <label class="calc__pill"><input type="radio" name="calcRes" value="4k"><span>2160p / 4K</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <label class="calc__check-solo"><input type="checkbox" id="calcMulticam"><span>Sincronizar 2+ cámaras</span></label>
+      </div>
+
+      <div class="calc__result">
+        <span class="calc__result-label">Estimado</span>
+        <strong class="calc__result-value" id="calcTotal">$15</strong>
+        <p class="calc__result-note" id="calcLongNote" hidden>Para más de 20 minutos, mejor escríbeme directamente y lo afinamos.</p>
+        <p class="calc__disclaimer">Esto es un estimado, no una cotización cerrada — el número final puede variar según el detalle del proyecto.</p>
+      </div>
+
+      <button type="button" class="calc__export" id="calcExportBtn">Descargar como PDF</button>
+    </div>
+  </div>
+
+  <!-- Vista de impresión: oculta en pantalla, es lo único que se ve al
+       exportar. script.js la rellena justo antes de llamar a window.print(). -->
+  <div class="calc__print" id="calcPrint" aria-hidden="true">
+    <div class="calc__print-mark">Camilo Creativo</div>
+    <h1>Cotización estimada</h1>
+    <dl class="calc__print-rows" id="calcPrintBody"></dl>
+    <p class="calc__print-total">Estimado: <strong id="calcPrintTotal"></strong></p>
+    <p class="calc__print-note">Esto es un estimado, no una cotización cerrada — el número final puede variar según el detalle del proyecto.</p>
+    <p class="calc__print-contact">camilojuan197@gmail.com · +57 321 327 5783 · camilocreativo.github.io/Camilo-Editor</p>
   </div>
 
   <!-- ===== TOAST ===== -->

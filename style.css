@@ -1188,6 +1188,210 @@ h1, h2, h3, .bebas {
   color: var(--ink);
 }
 
+/* Botón que abre la calculadora — mismo aspecto que .calc__export dentro
+   del modal, es el mismo tipo de acción (naranja: "esto se pulsa"). */
+.precios__calc-btn,
+.calc__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 26px;
+  background: var(--flare);
+  color: var(--tinta);
+  font-family: var(--font-cuerpo);
+  font-weight: 700;
+  font-size: 0.94rem;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform var(--t-med) var(--ease-out);
+}
+.precios__calc-btn { margin-top: clamp(22px, 3vw, 32px); }
+.precios__calc-btn:hover, .calc__export:hover { transform: translateY(-2px); }
+.precios__calc-btn:active, .calc__export:active { transform: translateY(0); }
+.precios__calc-btn svg { width: 18px; height: 18px; }
+
+/* =========================================================
+   CALCULADORA — modal con formulario y estimado en vivo.
+   Reutiliza .modal/.modal__backdrop/.modal__close (mismo patrón de
+   apertura, cierre, foco y Escape que el modal de video); solo el
+   tamaño y el contenido del cuadro son propios.
+   ========================================================= */
+.calc__content {
+  width: min(560px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--ground);
+  border-radius: 20px;
+  padding: clamp(28px, 4vw, 44px);
+  box-shadow: 0 40px 90px -30px rgba(0, 51, 102, 0.55);
+  text-align: left;
+  /* Entrada suave: el modal de video solo se desvanece; este además
+     escala y sube un poco — "muy smooth" a propósito. */
+  transform: scale(0.94) translateY(16px);
+  transition: transform var(--t-med) var(--ease-out);
+}
+.calc-modal.is-open .calc__content { transform: scale(1) translateY(0); }
+
+/* El botón de cerrar del video flota ENCIMA de la caja porque esta es
+   chica y transparente. El formulario es más alto y con fondo propio: si
+   el botón se queda "flotando arriba" (top:-56px, como en video), en un
+   formulario cerca de max-height puede terminar pegado al borde superior
+   de la ventana o directamente fuera de ella. Aquí vive DENTRO, en la
+   esquina, sin depender de cuánto mida el formulario. */
+.calc__content .modal__close {
+  top: 14px;
+  right: 14px;
+  background: var(--ink-wash);
+  color: var(--ink);
+}
+.calc__content .modal__close:hover { background: var(--flare); color: var(--tinta); }
+
+.calc__title {
+  font-family: var(--font-titulo);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  color: var(--ink);
+  margin: 0 0 clamp(20px, 3vw, 28px);
+}
+.calc__field { margin-bottom: clamp(18px, 2.4vw, 26px); }
+.calc__label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-txt);
+}
+
+.calc__pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.calc__pill input {
+  position: absolute;
+  opacity: 0;
+  width: 1px; height: 1px;
+}
+.calc__pill span {
+  display: inline-block;
+  padding: 9px 18px;
+  border: 1.4px solid var(--ink-line);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  color: var(--ink-txt);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.calc__pill input:checked + span {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ground);
+}
+.calc__pill input:focus-visible + span { outline: 2px solid var(--flare); outline-offset: 2px; }
+
+.calc__number {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.4px solid var(--ink-line);
+  border-radius: 8px;
+  font-family: var(--font-cuerpo);
+  font-size: 1rem;
+  color: var(--ink);
+  background: transparent;
+}
+.calc__number:focus-visible { outline: 2px solid var(--flare); outline-offset: 1px; }
+
+.calc__checks { display: flex; flex-direction: column; gap: 10px; }
+.calc__checks label, .calc__check-solo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: var(--ink-txt);
+  cursor: pointer;
+}
+.calc__checks input, .calc__check-solo input {
+  width: 17px; height: 17px;
+  accent-color: var(--flare);
+  cursor: pointer;
+}
+
+.calc__result {
+  margin-top: clamp(24px, 3vw, 34px);
+  padding-top: clamp(18px, 2.4vw, 26px);
+  border-top: 1.6px solid var(--ink);
+}
+.calc__result-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-txt);
+  margin-bottom: 4px;
+}
+.calc__result-value {
+  font-family: var(--font-titulo);
+  font-weight: 400;
+  font-size: clamp(2.2rem, 6vw, 3rem);
+  color: var(--ink);
+  line-height: 1;
+}
+.calc__result-note { margin: 10px 0 0; font-size: 0.86rem; color: var(--earth); }
+.calc__disclaimer { margin: 10px 0 0; font-size: 0.8rem; color: var(--ink-txt); }
+
+/* Vista de impresión — oculta en pantalla. script.js la rellena y llama
+   a window.print() justo después.
+
+   Ocultar con `visibility:hidden` un `body *` deja el LARGO real de toda
+   la página intacto —solo invisible—, así que Chrome seguía paginando el
+   alto completo del sitio: el PDF salía de varias hojas casi en blanco
+   con la cotización solo en la primera. La solución es más simple:
+   apagar con `display:none` cada hijo directo de `body` menos
+   `.calc__print`. Sin layout que paginar, el PDF sale de una sola hoja. */
+.calc__print { display: none; }
+@media print {
+  body > *:not(.calc__print) { display: none !important; }
+  /* Las dos capas de fondo (luz y grano) son ::before/::after de body:
+     no son hijos, así que la regla de arriba no las toca. */
+  body::before, body::after { display: none !important; }
+  .calc__print {
+    display: block;
+    padding: 40px;
+    font-family: var(--font-cuerpo);
+    color: #111;
+    background: #fff;
+  }
+  .calc__print-mark {
+    font-family: var(--font-titulo);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #E36414;
+    margin-bottom: 18px;
+  }
+  .calc__print h1 {
+    font-family: var(--font-titulo);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-size: 32px;
+    color: #003366;
+    margin: 0 0 22px;
+  }
+  .calc__print-rows { margin: 0; }
+  .calc__print-rows .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 7px 0;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+  }
+  .calc__print-total { font-size: 22px; font-weight: 700; margin: 20px 0 0; }
+  .calc__print-note, .calc__print-contact { font-size: 12px; color: #555; margin: 8px 0 0; }
+}
+
 /* =========================================================
    CONTACTO
    ========================================================= */
