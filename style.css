@@ -1580,6 +1580,10 @@ h1, h2, h3, .bebas {
   .calc__export-specs { grid-template-columns: 1fr; }
 }
 .calc__export-group { display: flex; flex-direction: column; gap: 12px; }
+/* El gap del flex ya separa el campo "Otro" revelado de su select —
+   sumarle también el margin-top pensado para un .calc__field de bloque
+   (Formato/Estilo/…) duplicaría el aire. */
+.calc__export-group .calc__other-input { margin-top: 0; }
 .calc__export-subhead {
   font-size: 0.7rem;
   font-weight: 700;

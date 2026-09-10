@@ -525,14 +525,21 @@
     return (minDays === maxDays ? minDays : minDays + '–' + maxDays) + ' días hábiles';
   }
 
-  /* Compartida entre el PDF y la imagen: si el cliente aporta el
-     almacenamiento y dejó dicho por dónde (WeTransfer, Drive, lo que
-     sea), se lo suma a la etiqueta — sin eso, el documento solo diría
-     "Tú lo aportas" sin decir por dónde llega el archivo. */
+  /* Compartida entre el PDF y la imagen. Si el cliente aporta el
+     almacenamiento y hay un modal de detalles de por medio (el PDF
+     genérico de la calculadora no lo tiene), siempre se dice algo sobre
+     el método — el método si lo escribió, o "No especificado" si lo
+     dejó en blanco. Antes, dejarlo en blanco simplemente omitía la
+     mención por completo, que se leía como que faltaba información en
+     vez de confirmar que no se especificó nada. Con "camilo" no aplica:
+     ya se sabe que es por Drive, preguntar sería ruido. */
   function formatAlmacenamiento(state, details) {
     const almacen = PRICING.almacenamiento[state.almacenamiento];
-    const metodo = details && details.almacenamientoMetodo;
-    const label = (state.almacenamiento === 'cliente' && metodo) ? (almacen.label + ' — ' + metodo) : almacen.label;
+    let label = almacen.label;
+    if (state.almacenamiento === 'cliente' && details) {
+      const metodo = details.almacenamientoMetodo ? details.almacenamientoMetodo.trim() : '';
+      label += ' — ' + (metodo || 'No especificado');
+    }
     return almacen.amount > 0 ? (label + ' (+$' + almacen.amount + ')') : label;
   }
 
@@ -727,6 +734,30 @@
         doc.setLineWidth(1);
         doc.line(mx, yy, pageW - mx, yy);
       }
+      /* Fila label-izquierda/valor-derecha que puede llevar un valor
+         largo (método de entrega, un "Otro" escrito a mano) — a
+         diferencia de las filas de valor fijo (Resolución, extras), que
+         nunca necesitan envolver. Mide antes de decidir entre una línea
+         o el valor envuelto debajo, y siempre deja el font en
+         normal/S(10.5) al terminar, sin importar qué rama tomó: dejarlo
+         en cualquier otro estado filtraría a la fila siguiente, que no
+         vuelve a fijar su propio font por su cuenta. */
+      function wrapSafeRow(label, value) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5)); doc.setTextColor(0, 51, 102);
+        put(label, y);
+        const fits = doc.getTextWidth(value) <= (pageW - mx * 2) * 0.58;
+        if (fits) {
+          textRight(value, y);
+        } else {
+          y += S(14);
+          doc.setFontSize(S(9.5));
+          doc.splitTextToSize(value, pageW - mx * 2).forEach((line, i) => {
+            if (i > 0) y += S(13);
+            put(line, y);
+          });
+        }
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5));
+      }
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(S(10.5)); doc.setTextColor(227, 100, 20);
       put('CAMILO CREATIVO', y);
@@ -790,34 +821,7 @@
       textRight(PRICING.resolucion[state.resolucion].label, y);
 
       y += S(20);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5)); doc.setTextColor(0, 51, 102);
-      put('Almacenamiento de entrega', y);
-      /* El método que escribe el cliente (hasta 80 caracteres) no cabe
-         siempre a la derecha en una sola línea junto a la etiqueta —a
-         diferencia del resto de RECARGOS, que son valores cortos fijos—,
-         así que se mide antes de decidir: si no entra, baja como texto
-         envuelto en vez de seguir de largo fuera del margen. */
-      {
-        const almacenText = formatAlmacenamiento(state, details);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(S(10.5));
-        const fitsOneLine = doc.getTextWidth(almacenText) <= (pageW - mx * 2) * 0.58;
-        if (fitsOneLine) {
-          textRight(almacenText, y);
-        } else {
-          y += S(14);
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(S(9.5));
-          doc.splitTextToSize(almacenText, pageW - mx * 2).forEach((line, i) => {
-            if (i > 0) y += S(13);
-            put(line, y);
-          });
-        }
-        /* A diferencia del resto de RECARGOS, esta fila puede dejar el
-           font en negrita (rama de una línea) o en 9.5pt (rama
-           envuelta) — sin resetear aquí, "Sincronizar" y "Entrega
-           urgente" heredarían ese estado por accidente, ya que ninguna
-           de las dos vuelve a llamar `doc.setFont()` por su cuenta. */
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5));
-      }
+      wrapSafeRow('Almacenamiento de entrega', formatAlmacenamiento(state, details));
 
       y += S(20);
       const mcOn = state.multicam;
@@ -876,7 +880,33 @@
         addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
         addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
         addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
-        addWrapped('Especificaciones de exportación', details.exportSpecs || 'Estándar (MP4, H.264, audio AAC)');
+
+        /* Especificaciones de exportación: antes era un solo resumen que
+           unía solo los parámetros que la persona cambiaba, así que
+           dejar todo en "Estándar" hacía que el bloque entero
+           desapareciera del documento — Camilo lo reportó como que el
+           formato de audio "no se veía". Ahora cada uno de los cinco
+           parámetros es su propia fila, con "No especificado" cuando
+           quedó en Estándar, igual que el resto de los campos de
+           PROYECTO — y separados en Video/Audio, como ya está agrupado
+           el formulario. */
+        y += S(22);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(S(8)); doc.setTextColor(0, 51, 102);
+        put('ESPECIFICACIONES DE EXPORTACIÓN — VIDEO', y);
+        y += S(16);
+        wrapSafeRow('Formato de archivo', details.expContainer || 'No especificado');
+        y += S(18);
+        wrapSafeRow('Códec de video', details.expVideoCodec || 'No especificado');
+        y += S(18);
+        wrapSafeRow('Cuadros por segundo', details.expFps || 'No especificado');
+
+        y += S(22);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(S(8)); doc.setTextColor(0, 51, 102);
+        put('ESPECIFICACIONES DE EXPORTACIÓN — AUDIO', y);
+        y += S(16);
+        wrapSafeRow('Códec de audio', details.expAudioCodec || 'No especificado');
+        y += S(18);
+        wrapSafeRow('Frecuencia de muestreo', details.expSampleRate || 'No especificado');
       }
 
       y += S(44);
@@ -971,6 +1001,25 @@
       if (line) lines.push(line);
       return lines;
     }
+    /* Misma idea que en generatePdf(): una fila que puede llevar un
+       valor largo (método de entrega, un "Otro" escrito a mano) se mide
+       antes de decidir entre una línea a la derecha o el valor envuelto
+       debajo, en vez de dejarlo correr fuera del lienzo. */
+    function wrapSafeRow(label, value) {
+      setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
+      text(label, mx, y);
+      const fits = ctx.measureText(value).width <= contentWidth * 0.58;
+      if (fits) {
+        textRight(value, y);
+      } else {
+        y += 20;
+        setFont('normal', 13);
+        wrap(value, contentWidth).forEach((line, i) => {
+          if (i > 0) y += 18;
+          text(line, mx, y);
+        });
+      }
+    }
 
     if (draw) { ctx.fillStyle = 'rgb(227,100,20)'; ctx.fillRect(0, 0, width, 10); }
 
@@ -1038,23 +1087,7 @@
     setFont('bold', 14); textRight(PRICING.resolucion[state.resolucion].label, y);
 
     y += 26;
-    setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
-    text('Almacenamiento de entrega', mx, y);
-    {
-      const almacenText = formatAlmacenamiento(state, details);
-      setFont('bold', 14);
-      const fitsOneLine = ctx.measureText(almacenText).width <= contentWidth * 0.58;
-      if (fitsOneLine) {
-        textRight(almacenText, y);
-      } else {
-        y += 20;
-        setFont('normal', 13);
-        wrap(almacenText, contentWidth).forEach((line, i) => {
-          if (i > 0) y += 18;
-          text(line, mx, y);
-        });
-      }
-    }
+    wrapSafeRow('Almacenamiento de entrega', formatAlmacenamiento(state, details));
 
     y += 26;
     const mcOn = state.multicam;
@@ -1112,7 +1145,24 @@
       addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
       addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
       addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
-      addWrapped('Especificaciones de exportación', details.exportSpecs || 'Estándar (MP4, H.264, audio AAC)');
+
+      y += 28;
+      setFont('bold', 11); ctx.fillStyle = 'rgb(0,51,102)';
+      text('ESPECIFICACIONES DE EXPORTACIÓN — VIDEO', mx, y);
+      y += 22;
+      wrapSafeRow('Formato de archivo', details.expContainer || 'No especificado');
+      y += 22;
+      wrapSafeRow('Códec de video', details.expVideoCodec || 'No especificado');
+      y += 22;
+      wrapSafeRow('Cuadros por segundo', details.expFps || 'No especificado');
+
+      y += 28;
+      setFont('bold', 11); ctx.fillStyle = 'rgb(0,51,102)';
+      text('ESPECIFICACIONES DE EXPORTACIÓN — AUDIO', mx, y);
+      y += 22;
+      wrapSafeRow('Códec de audio', details.expAudioCodec || 'No especificado');
+      y += 22;
+      wrapSafeRow('Frecuencia de muestreo', details.expSampleRate || 'No especificado');
     }
 
     y += 50;
@@ -1235,16 +1285,22 @@
         }
         return el.nextElementSibling ? el.nextElementSibling.textContent : el.value;
       });
-    /* Cinco desplegables en vez de un solo campo libre: cada uno reporta
-       "" en su opción "Estándar", así que solo se listan los que la
-       persona de verdad cambió. Sin ninguno tocado, queda el mismo
-       texto por defecto que antes escribía el campo libre. */
-    const expParts = [];
-    if (val('detExpContainer')) expParts.push(val('detExpContainer'));
-    if (val('detExpVideoCodec')) expParts.push('video ' + val('detExpVideoCodec'));
-    if (val('detExpFps')) expParts.push(val('detExpFps'));
-    if (val('detExpAudioCodec')) expParts.push('audio ' + val('detExpAudioCodec'));
-    if (val('detExpSampleRate')) expParts.push(val('detExpSampleRate'));
+    /* Mismo tratamiento que el pill "Otro" de arriba, pero para un
+       <select>: si vale "otro", se resuelve contra su campo de texto
+       (o "Otro (sin especificar)" si quedó vacío); si no, el valor tal
+       cual — vacío para "Estándar", que el PDF/imagen convierten en
+       "No especificado" al mostrarlo, en vez de omitir el parámetro en
+       silencio como hacía el resumen anterior. */
+    const selVal = (id, otherId) => {
+      const el = document.getElementById(id);
+      if (!el) return '';
+      if (el.value === 'otro') {
+        const other = document.getElementById(otherId);
+        const custom = other ? other.value.trim() : '';
+        return custom || 'Otro (sin especificar)';
+      }
+      return el.value;
+    };
     return {
       nombre: val('detName'),
       descripcion: val('detDescripcion'),
@@ -1254,7 +1310,11 @@
       tono: checked('detTono'),
       ritmo: checked('detRitmo'),
       requerimientos: val('detRequerimientos'),
-      exportSpecs: expParts.length ? expParts.join(', ') : 'Estándar (MP4, H.264, audio AAC 48kHz)',
+      expContainer: selVal('detExpContainer', 'detExpContainerOtro'),
+      expVideoCodec: selVal('detExpVideoCodec', 'detExpVideoCodecOtro'),
+      expFps: selVal('detExpFps', 'detExpFpsOtro'),
+      expAudioCodec: selVal('detExpAudioCodec', 'detExpAudioCodecOtro'),
+      expSampleRate: selVal('detExpSampleRate', 'detExpSampleRateOtro'),
       almacenamientoMetodo: val('detAlmacenamientoMetodo')
     };
   }
@@ -1295,6 +1355,17 @@
       el.addEventListener('change', () => {
         other.hidden = !el.checked;
         if (el.checked) other.focus();
+      });
+    });
+    /* Mismo mecanismo que las pills, adaptado a un <select>: revela su
+       campo de texto cuando el valor elegido es "otro", en vez de
+       cuando un checkbox se marca. */
+    detailsModal.querySelectorAll('select[data-other]').forEach(sel => {
+      const other = document.getElementById(sel.dataset.other);
+      if (!other) return;
+      sel.addEventListener('change', () => {
+        other.hidden = sel.value !== 'otro';
+        if (sel.value === 'otro') other.focus();
       });
     });
   }

@@ -641,25 +641,29 @@
           <div class="calc__export-group">
             <span class="calc__export-subhead">Video</span>
             <label class="calc__select-label" for="detExpContainer">Formato de archivo
-              <select class="calc__select" id="detExpContainer">
+              <select class="calc__select" id="detExpContainer" data-other="detExpContainerOtro">
                 <option value="">Estándar (MP4)</option>
                 <option value="MP4">MP4</option>
                 <option value="MOV (QuickTime)">MOV (QuickTime)</option>
                 <option value="MKV">MKV</option>
                 <option value="WebM">WebM</option>
+                <option value="otro">Otro</option>
               </select>
             </label>
+            <input type="text" class="calc__number calc__other-input" id="detExpContainerOtro" maxlength="40" placeholder="Especifica el formato de archivo" hidden>
             <label class="calc__select-label" for="detExpVideoCodec">Códec de video
-              <select class="calc__select" id="detExpVideoCodec">
+              <select class="calc__select" id="detExpVideoCodec" data-other="detExpVideoCodecOtro">
                 <option value="">Estándar (H.264)</option>
                 <option value="H.264 (AVC)">H.264 (AVC)</option>
                 <option value="H.265 (HEVC)">H.265 (HEVC)</option>
                 <option value="ProRes">ProRes</option>
                 <option value="VP9">VP9</option>
+                <option value="otro">Otro</option>
               </select>
             </label>
+            <input type="text" class="calc__number calc__other-input" id="detExpVideoCodecOtro" maxlength="40" placeholder="Especifica el códec de video" hidden>
             <label class="calc__select-label" for="detExpFps">Cuadros por segundo
-              <select class="calc__select" id="detExpFps">
+              <select class="calc__select" id="detExpFps" data-other="detExpFpsOtro">
                 <option value="">Estándar (igual al original)</option>
                 <option value="23.976 fps">23.976 fps</option>
                 <option value="24 fps">24 fps</option>
@@ -668,28 +672,34 @@
                 <option value="30 fps">30 fps</option>
                 <option value="50 fps">50 fps</option>
                 <option value="60 fps">60 fps</option>
+                <option value="otro">Otro</option>
               </select>
             </label>
+            <input type="text" class="calc__number calc__other-input" id="detExpFpsOtro" maxlength="40" placeholder="Especifica los cuadros por segundo" hidden>
           </div>
           <div class="calc__export-group">
             <span class="calc__export-subhead">Audio</span>
             <label class="calc__select-label" for="detExpAudioCodec">Códec de audio
-              <select class="calc__select" id="detExpAudioCodec">
+              <select class="calc__select" id="detExpAudioCodec" data-other="detExpAudioCodecOtro">
                 <option value="">Estándar (AAC)</option>
                 <option value="AAC">AAC</option>
                 <option value="MP3">MP3</option>
                 <option value="WAV (sin comprimir)">WAV (sin comprimir)</option>
                 <option value="ALAC">ALAC</option>
+                <option value="otro">Otro</option>
               </select>
             </label>
+            <input type="text" class="calc__number calc__other-input" id="detExpAudioCodecOtro" maxlength="40" placeholder="Especifica el códec de audio" hidden>
             <label class="calc__select-label" for="detExpSampleRate">Frecuencia de muestreo
-              <select class="calc__select" id="detExpSampleRate">
+              <select class="calc__select" id="detExpSampleRate" data-other="detExpSampleRateOtro">
                 <option value="">Estándar (48 kHz)</option>
                 <option value="44.1 kHz">44.1 kHz</option>
                 <option value="48 kHz">48 kHz</option>
                 <option value="96 kHz">96 kHz</option>
+                <option value="otro">Otro</option>
               </select>
             </label>
+            <input type="text" class="calc__number calc__other-input" id="detExpSampleRateOtro" maxlength="40" placeholder="Especifica la frecuencia de muestreo" hidden>
           </div>
         </div>
       </div>
