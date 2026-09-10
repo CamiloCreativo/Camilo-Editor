@@ -243,6 +243,12 @@ h1, h2, h3, .bebas {
   border: 0;
   cursor: pointer;
   padding: 0;
+  /* .nav__links es su hermano siguiente y, abierto, se pinta encima
+     (mismo z-index:auto, gana el último en el DOM) — sin esto, la
+     hamburguesa queda tapada por su propio cajón y no hay forma de
+     volver a pulsarla para cerrar. z-index basta sin position:relative:
+     .nav__toggle ya es hijo flex de .nav. */
+  z-index: 1;
 }
 .nav__toggle span {
   display: block;
