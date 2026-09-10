@@ -746,6 +746,193 @@
     return 'Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : '') + ' Aquí tienes mi cotización, ¿hablamos?';
   }
 
+  /* Mismo contenido que generatePdf(), dibujado en un <canvas> en vez de
+     con jsPDF: esto es lo que viaja pegado al mensaje de WhatsApp vía
+     Web Share API. Se ejecuta dos veces con el mismo código —draw=false
+     solo mide, draw=true además pinta— para que el alto del canvas final
+     salga exacto sin necesidad de paginar como el PDF: al ser una sola
+     imagen no hay límite de página que respetar. */
+  function renderEstimateImage(ctx, state, result, details, draw) {
+    const width = 960;
+    const mx = 64;
+    const contentWidth = width - mx * 2;
+    let y = 0;
+
+    function setFont(weight, size) {
+      ctx.font = weight + ' ' + size + 'px Helvetica, Arial, sans-serif';
+    }
+    function text(txt, x, yy) {
+      if (draw) ctx.fillText(txt, x, yy);
+    }
+    function textRight(txt, yy) {
+      text(txt, width - mx - ctx.measureText(txt).width, yy);
+    }
+    function divider(yy) {
+      if (!draw) return;
+      ctx.strokeStyle = 'rgb(224,224,224)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mx, yy);
+      ctx.lineTo(width - mx, yy);
+      ctx.stroke();
+    }
+    function wrap(txt, maxWidth) {
+      const words = txt.split(' ');
+      const lines = [];
+      let line = '';
+      words.forEach(word => {
+        const test = line ? line + ' ' + word : word;
+        if (line && ctx.measureText(test).width > maxWidth) { lines.push(line); line = word; }
+        else line = test;
+      });
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    if (draw) { ctx.fillStyle = 'rgb(227,100,20)'; ctx.fillRect(0, 0, width, 10); }
+
+    const nombre = details && details.nombre;
+    y = 56;
+    setFont('bold', 15); ctx.fillStyle = 'rgb(227,100,20)';
+    text('CAMILO CREATIVO', mx, y);
+
+    y += 40;
+    setFont('bold', 28); ctx.fillStyle = 'rgb(0,51,102)';
+    text(nombre ? ('Cotización para ' + nombre) : 'Cotización de edición de video', mx, y);
+
+    y += 24;
+    setFont('normal', 13); ctx.fillStyle = 'rgb(135,135,135)';
+    text(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
+
+    y += 26;
+    divider(y);
+
+    y += 36;
+    setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
+    text('Nivel', mx, y);
+    setFont('bold', 15); textRight(PRICING.tiers[state.tier].label, y);
+
+    y += 30;
+    setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
+    text('Duración', mx, y);
+    setFont('bold', 15); textRight(formatDuration(state), y);
+
+    y += 34;
+    divider(y);
+    y += 28;
+    setFont('bold', 12); ctx.fillStyle = 'rgb(90,62,43)';
+    text('EXTRAS', mx, y);
+
+    PRICING.extras.forEach(ex => {
+      const on = state.extras.indexOf(ex.id) !== -1;
+      y += 26;
+      setFont('normal', 14);
+      ctx.fillStyle = on ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
+      text(ex.label, mx, y);
+      textRight(on ? 'Sí' : 'No aplica', y);
+    });
+
+    y += 34;
+    divider(y);
+    y += 28;
+    setFont('bold', 12); ctx.fillStyle = 'rgb(90,62,43)';
+    text('RECARGOS', mx, y);
+
+    y += 26;
+    setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
+    text('Resolución de entrega', mx, y);
+    setFont('bold', 14); textRight(PRICING.resolucion[state.resolucion].label, y);
+
+    y += 26;
+    const mcOn = state.multicam;
+    setFont('normal', 14);
+    ctx.fillStyle = mcOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
+    text(PRICING.multicamLabel, mx, y);
+    textRight(mcOn ? 'Sí' : 'No aplica', y);
+
+    if (details) {
+      y += 34;
+      divider(y);
+      y += 28;
+      setFont('bold', 12); ctx.fillStyle = 'rgb(90,62,43)';
+      text('PROYECTO', mx, y);
+
+      y += 26;
+      setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
+      text('Para', mx, y);
+      setFont('bold', 14); textRight(details.nombre || 'No especificado', y);
+
+      const addWrapped = (label, txt) => {
+        setFont('normal', 13);
+        const lines = wrap(txt, contentWidth);
+        y += 28;
+        setFont('bold', 11); ctx.fillStyle = 'rgb(0,51,102)';
+        text(label.toUpperCase(), mx, y);
+        y += 18;
+        setFont('normal', 13); ctx.fillStyle = 'rgb(0,51,102)';
+        lines.forEach(line => { text(line, mx, y); y += 18; });
+      };
+      addWrapped('Descripción', details.descripcion || 'No especificada');
+      addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
+      addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
+      addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
+      addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
+      addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
+    }
+
+    y += 50;
+    setFont('normal', 12); ctx.fillStyle = 'rgb(135,135,135)';
+    text('ESTIMADO', mx, y);
+    y += 40;
+    setFont('bold', 38); ctx.fillStyle = 'rgb(0,51,102)';
+    text('$' + result.total + ' USD', mx, y);
+
+    y += 28;
+    setFont('italic', 11); ctx.fillStyle = 'rgb(165,165,165)';
+    text('No es una cotización cerrada: el número final puede variar según el detalle del proyecto.', mx, y);
+
+    return y + 40;
+  }
+
+  /* Doble pasada: la primera mide sin pintar (canvas de 10px de alto solo
+     para tener un contexto con el que medir texto), la segunda pinta sobre
+     un canvas ya del alto correcto. Sin esto habría que adivinar el alto
+     de antemano o recortar contenido. */
+  function generateEstimateImageBlob(state, result, details) {
+    return new Promise((resolve, reject) => {
+      const width = 960;
+      const measureCanvas = document.createElement('canvas');
+      measureCanvas.width = width;
+      measureCanvas.height = 10;
+      const mctx = measureCanvas.getContext('2d');
+      const height = renderEstimateImage(mctx, state, result, details, false);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = Math.ceil(height);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      renderEstimateImage(ctx, state, result, details, true);
+
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('No se pudo generar la imagen de la cotización.'));
+      }, 'image/png');
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   const calcModal = document.getElementById('calcModal');
   const calcExportBtn = document.getElementById('calcExportBtn');
   const calcWhatsappBtn = document.getElementById('calcWhatsappBtn');
@@ -828,29 +1015,50 @@
     if (detailsLastFocused && detailsLastFocused.focus) detailsLastFocused.focus();
   }
 
-  /* Se probó la Web Share API para mandar una imagen directo a WhatsApp
-     y se descartó: el selector nativo del sistema (elegir la app) es
-     obligatorio en esa API — ningún navegador permite saltárselo, es la
-     misma protección que impide que cualquier página empuje archivos a
-     otra app sin que la persona lo vea y lo confirme—. Camilo lo probó
-     y no lo quiso: pidió ir derecho a WhatsApp, sin pantallas de por
-     medio. `wa.me` sí hace eso —abre la conversación directo, sin
-     selector—, a cambio de no poder adjuntar el PDF solo: por eso el
-     PDF se descarga aparte, con toda la información (incluida la
-     sección PROYECTO), para adjuntarlo a mano si se quiere que Camilo
-     lo vea completo. */
-  function confirmAndSend() {
+  /* La Web Share API se había probado y descartado una vez por el
+     selector nativo de apps que aparece antes de llegar a WhatsApp.
+     Camilo pidió retomarla: ese único toque le parece aceptable a
+     cambio de que la imagen llegue puesta en el mensaje, sin que la
+     persona tenga que descargarla ni adjuntarla a mano. `navigator
+     .share()` con `files` es la única API que logra eso — sin ella
+     (navegadores de escritorio sin soporte, Firefox) cae al camino
+     anterior: descarga la imagen y abre `wa.me` solo con texto,
+     avisando por toast que hay que adjuntarla. */
+  async function confirmAndSend() {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     const details = readDetailsState();
     const text = buildSimpleWhatsappText(details);
 
-    generatePdf(calcCurrentState, calcCurrentResult, details);
-    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
-    showToast('Descargué tu cotización en PDF y te abrí WhatsApp — adjunta el PDF en el chat si quieres que Camilo vea todo el detalle.');
+    let blob;
+    try {
+      blob = await generateEstimateImageBlob(calcCurrentState, calcCurrentResult, details);
+    } catch (err) {
+      showToast('No pude generar la imagen de la cotización. Intenta de nuevo.');
+      return;
+    }
+    const file = new File([blob], 'cotizacion-camilo-creativo.png', { type: 'image/png' });
 
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text });
+        closeDetailsModal();
+      } catch (err) {
+        if (err && err.name !== 'AbortError') showToast('No se pudo compartir la imagen. Intenta de nuevo.');
+      }
+      return;
+    }
+
+    downloadBlob(file, 'cotizacion-camilo-creativo.png');
+    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+    showToast('Tu navegador no admite compartir imágenes directo — descargué la cotización y te abrí WhatsApp, adjúntala a mano.');
     closeDetailsModal();
   }
 
+  const detailsPdfBtn = document.getElementById('detailsPdfBtn');
+  if (detailsPdfBtn) detailsPdfBtn.addEventListener('click', () => {
+    if (!calcCurrentState || !calcCurrentResult) updateCalc();
+    generatePdf(calcCurrentState, calcCurrentResult, readDetailsState());
+  });
   if (detailsConfirmBtn) detailsConfirmBtn.addEventListener('click', confirmAndSend);
   document.querySelectorAll('[data-close-details]').forEach(el => el.addEventListener('click', closeDetailsModal));
 
