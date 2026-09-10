@@ -359,9 +359,9 @@
             <dl class="precios__list">
               <div class="precios__row"><dt>Buscar o limpiar B-roll</dt><dd>$5–10 / min usado</dd></div>
               <div class="precios__row"><dt>Elegir música con licencia</dt><dd>$10 / video</dd></div>
-              <div class="precios__row"><dt>SFX fuera de mi librería</dt><dd>$5–15 / video</dd></div>
+              <div class="precios__row"><dt>SFX (efectos de sonido) fuera de mi librería</dt><dd>$5–15 / video</dd></div>
               <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$15–25 / video</dd></div>
-              <div class="precios__row"><dt>Miniatura para YouTube</dt><dd>$10–15</dd></div>
+              <div class="precios__row"><dt>Miniatura</dt><dd>$10–15</dd></div>
             </dl>
           </div>
           <div>
@@ -371,6 +371,7 @@
               <div class="precios__row"><dt>Entrega en 1440p / 2K</dt><dd>+15%</dd></div>
               <div class="precios__row"><dt>Entrega en 2160p / 4K</dt><dd>+25%</dd></div>
               <div class="precios__row"><dt>Sincronizar 2+ cámaras</dt><dd>+15–20%</dd></div>
+              <div class="precios__row"><dt>Ronda de revisión adicional</dt><dd>+15% / ronda</dd></div>
             </dl>
           </div>
         </div>
@@ -462,9 +463,9 @@
         <div class="calc__checks">
           <label><input type="checkbox" name="calcExtra" value="broll"><span>Buscar o limpiar B-roll</span></label>
           <label><input type="checkbox" name="calcExtra" value="musica"><span>Música con licencia</span></label>
-          <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX fuera de mi librería</span></label>
+          <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX (efectos de sonido) fuera de mi librería</span></label>
           <label><input type="checkbox" name="calcExtra" value="locucion"><span>Locución o voz en off (IA)</span></label>
-          <label><input type="checkbox" name="calcExtra" value="miniatura"><span>Miniatura para YouTube</span></label>
+          <label><input type="checkbox" name="calcExtra" value="miniatura"><span>Miniatura</span></label>
         </div>
       </div>
 
@@ -479,6 +480,12 @@
 
       <div class="calc__field">
         <label class="calc__check-solo"><input type="checkbox" id="calcMulticam"><span>Sincronizar 2+ cámaras</span></label>
+      </div>
+
+      <div class="calc__field">
+        <label class="calc__label" for="calcRevisiones">Rondas de revisión extra</label>
+        <p class="calc__field-hint">Cada pieza ya trae 1 ronda en Básico y 2 en Medio/Pro. Cada ronda de más suma 15% al precio.</p>
+        <input class="calc__number calc__number--sm" type="number" id="calcRevisiones" min="0" max="5" step="1" value="0" inputmode="numeric">
       </div>
 
       <div class="calc__result">

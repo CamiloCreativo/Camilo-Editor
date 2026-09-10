@@ -461,16 +461,16 @@
      redondeo lo absorbe el estimado, no al revés. */
   const PRICING = {
     tiers: {
-      basico: { label: 'Básico', points: [[1, 15], [2, 30], [5, 60], [10, 90], [15, 120], [20, 140]] },
-      medio: { label: 'Medio', points: [[1, 25], [2, 50], [5, 100], [10, 170], [15, 220], [20, 280]] },
-      pro: { label: 'Pro', points: [[1, 50], [2, 100], [5, 230], [10, 450], [15, 650], [20, 850]] }
+      basico: { label: 'Básico', points: [[1, 15], [2, 30], [5, 60], [10, 90], [15, 120], [20, 140]], revisions: 1 },
+      medio: { label: 'Medio', points: [[1, 25], [2, 50], [5, 100], [10, 170], [15, 220], [20, 280]], revisions: 2 },
+      pro: { label: 'Pro', points: [[1, 50], [2, 100], [5, 230], [10, 450], [15, 650], [20, 850]], revisions: 2 }
     },
     extras: [
       { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'perMin', rate: 7.5 },    // $5–10/min, punto medio
       { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
-      { id: 'sfx', label: 'SFX fuera de mi librería', kind: 'flat', amount: 10 },      // $5–15, punto medio
+      { id: 'sfx', label: 'SFX (efectos de sonido) fuera de mi librería', kind: 'flat', amount: 10 }, // $5–15, punto medio
       { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio
-      { id: 'miniatura', label: 'Miniatura para YouTube', kind: 'flat', amount: 12 }    // $10–15, punto medio
+      { id: 'miniatura', label: 'Miniatura', kind: 'flat', amount: 12 }    // $10–15, punto medio
     ],
     resolucion: {
       sd: { label: 'Hasta 1080p', pct: 0 },
@@ -478,7 +478,8 @@
       '4k': { label: '2160p / 4K', pct: 0.25 }
     },
     multicamLabel: 'Sincronizar 2+ cámaras',
-    multicamPct: 0.18 // +15–20%, punto medio
+    multicamPct: 0.18, // +15–20%, punto medio
+    revisionExtraPct: 0.15 // por ronda extra, sobre el precio de la pieza — Tarifas.md
   };
 
   /* Interpolación lineal por tramos entre los puntos (minuto, precio) de
@@ -517,7 +518,9 @@
     const extras = Array.from(calcModal.querySelectorAll('input[name="calcExtra"]:checked')).map(el => el.value);
     const multicamEl = document.getElementById('calcMulticam');
     const multicam = !!(multicamEl && multicamEl.checked);
-    return { tier, min, sec, minutes, resolucion, extras, multicam };
+    const revInput = document.getElementById('calcRevisiones');
+    const extraRevisions = revInput ? Math.min(5, Math.max(0, Number(revInput.value) || 0)) : 0;
+    return { tier, min, sec, minutes, resolucion, extras, multicam, extraRevisions };
   }
 
   function computeEstimate(state) {
@@ -531,6 +534,7 @@
     const subtotal = base + extrasTotal;
     let pct = PRICING.resolucion[state.resolucion] ? PRICING.resolucion[state.resolucion].pct : 0;
     if (state.multicam) pct += PRICING.multicamPct;
+    pct += PRICING.revisionExtraPct * state.extraRevisions;
     const total = subtotal * (1 + pct);
     return { base, extrasTotal, pct, total: Math.ceil(total) };
   }
@@ -585,7 +589,19 @@
   /* details es opcional: el botón "Descargar PDF" de la calculadora lo
      llama sin él (esa vista no conoce el modal de detalles) y el PDF
      sale genérico, sin sección de proyecto; "Confirmar y enviar" sí lo
-     tiene y lo pasa completo. */
+     tiene y lo pasa completo.
+
+     Camilo pidió que el PDF quepa **siempre en una sola página** — nunca
+     paginado. `layout(scale, draw)` dibuja todo el contenido dos veces:
+     la primera (`scale=1, draw=false`) solo mide, recorriendo el mismo
+     código pero sin pintar nada, para saber cuánta altura pide el
+     contenido real; la segunda pinta a la escala que haga falta para que
+     esa altura entre en el alto disponible de una A4. Reducir el tamaño
+     de letra también achica el ancho de cada palabra, así que el texto
+     envuelto (`doc.splitTextToSize`) sale en menos líneas a menor escala
+     — nunca en más—, lo que garantiza matemáticamente que la segunda
+     pasada quepa: la altura a escala `s` es como máximo `s` veces la
+     altura medida a escala 1. */
   function generatePdf(state, result, details) {
     const nombre = details && details.nombre;
     if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -597,137 +613,145 @@
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const mx = 56;
+    const topY = 60;
     const bottomMargin = 50;
-    let y = 0;
+    const available = pageH - topY - bottomMargin;
 
-    function textRight(txt, yy) {
-      doc.text(txt, pageW - mx - doc.getTextWidth(txt), yy);
-    }
-    function divider(yy) {
-      doc.setDrawColor(224, 224, 224);
-      doc.setLineWidth(1);
-      doc.line(mx, yy, pageW - mx, yy);
-    }
-    /* Con la sección PROYECTO el contenido ya no cabe siempre en una sola
-       página A4 — antes se seguía dibujando fuera del área visible y el
-       PDF salía cortado. ensureSpace() mide antes de cada bloque (nunca
-       parte una fila de extras ni una etiqueta de su primera línea) y
-       abre página nueva si no alcanza. */
-    function ensureSpace(needed) {
-      if (y + needed > pageH - bottomMargin) {
-        doc.addPage();
-        y = 56;
+    function layout(scale, draw) {
+      const S = n => n * scale;
+      let y = topY;
+
+      function put(txt, yy) { if (draw) doc.text(txt, mx, yy); }
+      function textRight(txt, yy) { if (draw) doc.text(txt, pageW - mx - doc.getTextWidth(txt), yy); }
+      function divider(yy) {
+        if (!draw) return;
+        doc.setDrawColor(224, 224, 224);
+        doc.setLineWidth(1);
+        doc.line(mx, yy, pageW - mx, yy);
       }
+
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(S(10.5)); doc.setTextColor(227, 100, 20);
+      put('CAMILO CREATIVO', y);
+
+      y += S(32);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(22)); doc.setTextColor(0, 51, 102);
+      put(nombre ? ('Cotización para ' + nombre) : 'Cotización de edición de video', y);
+
+      y += S(17);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(9.5)); doc.setTextColor(135, 135, 135);
+      put(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), y);
+
+      y += S(20);
+      divider(y);
+
+      y += S(28);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(11)); doc.setTextColor(0, 51, 102);
+      put('Nivel', y);
+      doc.setFont('helvetica', 'bold'); textRight(PRICING.tiers[state.tier].label, y);
+
+      y += S(23);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(11));
+      put('Duración', y);
+      doc.setFont('helvetica', 'bold'); textRight(formatDuration(state), y);
+
+      y += S(26);
+      divider(y);
+      y += S(22);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(S(8.5)); doc.setTextColor(90, 62, 43);
+      put('EXTRAS', y);
+
+      PRICING.extras.forEach(ex => {
+        const on = state.extras.indexOf(ex.id) !== -1;
+        y += S(20);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5));
+        doc.setTextColor(on ? 0 : 178, on ? 51 : 178, on ? 102 : 178);
+        put(ex.label, y);
+        textRight(on ? 'Sí' : 'No aplica', y);
+      });
+
+      y += S(26);
+      divider(y);
+      y += S(22);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(S(8.5)); doc.setTextColor(90, 62, 43);
+      put('RECARGOS', y);
+
+      y += S(20);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5)); doc.setTextColor(0, 51, 102);
+      put('Resolución de entrega', y);
+      textRight(PRICING.resolucion[state.resolucion].label, y);
+
+      y += S(20);
+      const mcOn = state.multicam;
+      doc.setTextColor(mcOn ? 0 : 178, mcOn ? 51 : 178, mcOn ? 102 : 178);
+      put(PRICING.multicamLabel, y);
+      textRight(mcOn ? 'Sí' : 'No aplica', y);
+
+      y += S(20);
+      const revIncluded = PRICING.tiers[state.tier].revisions;
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 51, 102);
+      put('Revisiones incluidas', y);
+      doc.setFont('helvetica', 'bold'); textRight(revIncluded + (revIncluded === 1 ? ' ronda' : ' rondas'), y);
+
+      y += S(20);
+      const revExtra = state.extraRevisions || 0;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(revExtra > 0 ? 0 : 178, revExtra > 0 ? 51 : 178, revExtra > 0 ? 102 : 178);
+      put('Rondas de revisión extra', y);
+      textRight(revExtra > 0 ? (revExtra + ' (+' + Math.round(PRICING.revisionExtraPct * revExtra * 100) + '%)') : 'No aplica', y);
+
+      if (details) {
+        y += S(26);
+        divider(y);
+        y += S(22);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(S(8.5)); doc.setTextColor(90, 62, 43);
+        put('PROYECTO', y);
+
+        y += S(20);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5)); doc.setTextColor(0, 51, 102);
+        put('Para', y);
+        doc.setFont('helvetica', 'bold'); textRight(details.nombre || 'No especificado', y);
+
+        const addWrapped = (label, txt) => {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10));
+          const lines = doc.splitTextToSize(txt, pageW - mx * 2);
+          y += S(22);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(S(8)); doc.setTextColor(0, 51, 102);
+          put(label.toUpperCase(), y);
+          y += S(14);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10)); doc.setTextColor(0, 51, 102);
+          lines.forEach(line => {
+            put(line, y);
+            y += S(14);
+          });
+        };
+        addWrapped('Descripción', details.descripcion || 'No especificada');
+        addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
+        addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
+        addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
+        addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
+        addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
+      }
+
+      y += S(44);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(9)); doc.setTextColor(135, 135, 135);
+      put('ESTIMADO', y);
+      y += S(33);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(S(29)); doc.setTextColor(0, 51, 102);
+      put('$' + result.total + ' USD', y);
+
+      y += S(24);
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(S(8)); doc.setTextColor(165, 165, 165);
+      put('No es una cotizacion cerrada: el numero final puede variar segun el detalle del proyecto.', y);
+
+      return y;
     }
+
+    const neededHeight = layout(1, false) - topY;
+    const scale = neededHeight > available ? available / neededHeight : 1;
 
     doc.setFillColor(227, 100, 20);
     doc.rect(0, 0, pageW, 10, 'F');
-
-    y = 60;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(227, 100, 20);
-    doc.text('CAMILO CREATIVO', mx, y);
-
-    y += 32;
-    doc.setFontSize(22); doc.setTextColor(0, 51, 102);
-    doc.text(nombre ? ('Cotización para ' + nombre) : 'Cotización de edición de video', mx, y);
-
-    y += 17;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(135, 135, 135);
-    doc.text(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
-
-    y += 20;
-    divider(y);
-
-    y += 28;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0, 51, 102);
-    doc.text('Nivel', mx, y);
-    doc.setFont('helvetica', 'bold'); textRight(PRICING.tiers[state.tier].label, y);
-
-    y += 23;
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 51, 102);
-    doc.text('Duración', mx, y);
-    doc.setFont('helvetica', 'bold'); textRight(formatDuration(state), y);
-
-    ensureSpace(26 + 22 + PRICING.extras.length * 20);
-    y += 26;
-    divider(y);
-    y += 22;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90, 62, 43);
-    doc.text('EXTRAS', mx, y);
-
-    PRICING.extras.forEach(ex => {
-      const on = state.extras.indexOf(ex.id) !== -1;
-      y += 20;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
-      doc.setTextColor(on ? 0 : 178, on ? 51 : 178, on ? 102 : 178);
-      doc.text(ex.label, mx, y);
-      textRight(on ? 'Sí' : 'No aplica', y);
-    });
-
-    ensureSpace(26 + 22 + 40);
-    y += 26;
-    divider(y);
-    y += 22;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90, 62, 43);
-    doc.text('RECARGOS', mx, y);
-
-    y += 20;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(0, 51, 102);
-    doc.text('Resolución de entrega', mx, y);
-    textRight(PRICING.resolucion[state.resolucion].label, y);
-
-    y += 20;
-    const mcOn = state.multicam;
-    doc.setTextColor(mcOn ? 0 : 178, mcOn ? 51 : 178, mcOn ? 102 : 178);
-    doc.text(PRICING.multicamLabel, mx, y);
-    textRight(mcOn ? 'Sí' : 'No aplica', y);
-
-    if (details) {
-      ensureSpace(26 + 22 + 20);
-      y += 26;
-      divider(y);
-      y += 22;
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90, 62, 43);
-      doc.text('PROYECTO', mx, y);
-
-      y += 20;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(0, 51, 102);
-      doc.text('Para', mx, y);
-      doc.setFont('helvetica', 'bold'); textRight(details.nombre || 'No especificado', y);
-
-      const addWrapped = (label, text) => {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
-        const lines = doc.splitTextToSize(text, pageW - mx * 2);
-        ensureSpace(22 + 14 + lines.length * 14);
-        y += 22;
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 51, 102);
-        doc.text(label.toUpperCase(), mx, y);
-        y += 14;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0, 51, 102);
-        lines.forEach(line => {
-          doc.text(line, mx, y);
-          y += 14;
-        });
-      };
-      addWrapped('Descripción', details.descripcion || 'No especificada');
-      addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
-      addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
-      addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
-      addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
-      addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
-    }
-
-    ensureSpace(44 + 33 + 24);
-    y += 44;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(135, 135, 135);
-    doc.text('ESTIMADO', mx, y);
-    y += 33;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(29); doc.setTextColor(0, 51, 102);
-    doc.text('$' + result.total + ' USD', mx, y);
-
-    y += 24;
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(165, 165, 165);
-    doc.text('No es una cotizacion cerrada: el numero final puede variar segun el detalle del proyecto.', mx, y);
+    layout(scale, true);
 
     doc.save('cotizacion-camilo-creativo' + (nombre ? '-' + slugify(nombre) : '') + '.pdf');
   }
@@ -849,6 +873,19 @@
     ctx.fillStyle = mcOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
     text(PRICING.multicamLabel, mx, y);
     textRight(mcOn ? 'Sí' : 'No aplica', y);
+
+    y += 26;
+    const revIncluded = PRICING.tiers[state.tier].revisions;
+    setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
+    text('Revisiones incluidas', mx, y);
+    setFont('bold', 14); textRight(revIncluded + (revIncluded === 1 ? ' ronda' : ' rondas'), y);
+
+    y += 26;
+    const revExtra = state.extraRevisions || 0;
+    setFont('normal', 14);
+    ctx.fillStyle = revExtra > 0 ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
+    text('Rondas de revisión extra', mx, y);
+    textRight(revExtra > 0 ? (revExtra + ' (+' + Math.round(PRICING.revisionExtraPct * revExtra * 100) + '%)') : 'No aplica', y);
 
     if (details) {
       y += 34;

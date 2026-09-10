@@ -1514,6 +1514,14 @@ h1, h2, h3, .bebas {
   color: var(--ink-txt);
 }
 
+/* Caption corta bajo el label de un campo — más chica que .details__hint
+   (que abre todo el formulario), pegada a un solo input. */
+.calc__field-hint {
+  margin: -4px 0 10px;
+  font-size: 0.8rem;
+  color: var(--ink-txt);
+}
+
 .calc__pills { display: flex; flex-wrap: wrap; gap: 8px; }
 .calc__pill input {
   position: absolute;
