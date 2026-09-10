@@ -478,9 +478,15 @@
       '2k': { label: '1440p / 2K', pct: 0.15 },
       '4k': { label: '2160p / 4K', pct: 0.25 }
     },
+    /* "Tú"/"yo" funciona en el formulario en vivo (Camilo le habla al
+       cliente que lo está llenando), pero estas etiquetas viajan al
+       PDF/imagen — el documento que termina leyendo Camilo, no el
+       cliente. Ahí "tú" y "yo" se vuelven ambiguos: quien lee es Camilo,
+       así que se nombra en tercera persona a quien corresponda, sin
+       depender de quién tiene el documento en la mano. */
     almacenamiento: {
-      cliente: { label: 'Tú lo aportas', amount: 0 },
-      camilo: { label: 'Yo lo aporto (Google Drive)', amount: 5 } // propuesto — sin calibrar
+      cliente: { label: 'Lo aporta el cliente', amount: 0 },
+      camilo: { label: 'Lo aporta Camilo Creativo (Google Drive)', amount: 5 } // propuesto — sin calibrar
     },
     multicamLabel: 'Sincronizar 2+ cámaras',
     multicamPct: 0.18, // +15–20%, punto medio
@@ -1370,15 +1376,17 @@
     });
   }
 
-  /* La Web Share API se había probado y descartado una vez por el
-     selector nativo de apps que aparece antes de llegar a WhatsApp.
-     Camilo pidió retomarla: ese único toque le parece aceptable a
-     cambio de que la imagen llegue puesta en el mensaje, sin que la
-     persona tenga que descargarla ni adjuntarla a mano. `navigator
-     .share()` con `files` es la única API que logra eso — sin ella
-     (navegadores de escritorio sin soporte, Firefox) cae al camino
-     anterior: descarga la imagen y abre `wa.me` solo con texto,
-     avisando por toast que hay que adjuntarla. */
+  /* Revertido: la Web Share API abre el selector nativo de apps, pero
+     una vez adentro de WhatsApp la persona elige a QUIÉN escribirle —la
+     API no tiene forma de indicar un contacto. Si alguien no tiene el
+     número de Camilo guardado, "compartir a WhatsApp" no llega a Camilo
+     en absoluto: puede terminar en cualquier chat. `wa.me/<número>` es
+     la única vía que garantiza el destinatario correcto, a cambio de no
+     poder adjuntar archivos — por eso vuelve a ser el único camino, sin
+     condición. La imagen viaja aparte: se copia al portapapeles para
+     que sea un Ctrl+V (o mantener presionado y pegar) dentro del chat
+     que ya se abrió con Camilo, en vez de descargarla a ciegas. Sin
+     soporte de portapapeles de imágenes, cae a descargarla. */
   async function confirmAndSend() {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     const details = readDetailsState();
@@ -1391,21 +1399,24 @@
       showToast('No pude generar la imagen de la cotización. Intenta de nuevo.');
       return;
     }
-    const file = new File([blob], 'cotizacion-camilo-creativo.png', { type: 'image/png' });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    let copied = false;
+    if (navigator.clipboard && window.ClipboardItem) {
       try {
-        await navigator.share({ files: [file], text });
-        closeDetailsModal();
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        copied = true;
       } catch (err) {
-        if (err && err.name !== 'AbortError') showToast('No se pudo compartir la imagen. Intenta de nuevo.');
+        copied = false;
       }
-      return;
+    }
+    if (!copied) {
+      downloadBlob(new File([blob], 'cotizacion-camilo-creativo.png', { type: 'image/png' }), 'cotizacion-camilo-creativo.png');
     }
 
-    downloadBlob(file, 'cotizacion-camilo-creativo.png');
     window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
-    showToast('Tu navegador no admite compartir imágenes directo — descargué la cotización y te abrí WhatsApp, adjúntala a mano.');
+    showToast(copied
+      ? 'Copié tu cotización y te abrí WhatsApp — pégala (Ctrl+V o mantén presionado y Pegar) en el chat.'
+      : 'Descargué tu cotización y te abrí WhatsApp — adjúntala en el chat si quieres que Camilo la vea completa.');
     closeDetailsModal();
   }
 
