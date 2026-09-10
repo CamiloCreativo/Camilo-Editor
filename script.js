@@ -715,6 +715,19 @@
      altura medida a escala 1. */
   function generatePdf(state, result, details) {
     const nombre = details && details.nombre;
+    /* El navegador embebido de Instagram/Facebook/TikTok (y similares) no
+       es un navegador de verdad: es un WebView que la app anfitriona
+       controla, sin gestor de descargas propio. Ni `doc.save()` ni
+       `window.open()` con un blob: URL tienen forma confiable de
+       funcionar ahí — no es algo que este sitio pueda arreglar con más
+       código, es una limitación de esa ventana. Se detecta por user
+       agent (cada una de estas apps mete su propio nombre ahí) y se
+       avisa de una vez cómo salir, en vez de intentar la descarga y
+       fallar en silencio. */
+    if (isInAppBrowser()) {
+      showToast('Este enlace se abrió dentro de una app (Instagram, Facebook o similar) y ese navegador no permite descargar archivos. Toca los tres puntos o el ícono de compartir arriba y elige "Abrir en el navegador", luego genera el PDF de nuevo.');
+      return 'inapp';
+    }
     if (!window.jspdf || !window.jspdf.jsPDF) {
       showToast('No pude generar el PDF: la librería no cargó. Intenta de nuevo.');
       return 'error';
@@ -980,6 +993,14 @@
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
+  /* Instagram, Facebook/Messenger, TikTok, Line y WeChat inyectan su
+     propio nombre en el user agent de su WebView embebido — es la forma
+     documentada de detectarlos, la misma que usa cualquier guía sobre
+     "in-app browsers". */
+  function isInAppBrowser() {
+    return /Instagram|FBAN|FBAV|Line\/|MicroMessenger|TikTok|BytedanceWebview/i.test(navigator.userAgent);
+  }
+
   /* "Ana Pérez" -> "ana-perez", para nombrar el PNG de la cotización con
      detalles. Comparte la normalización que antes vivía en el PDF. */
   function slugify(text) {
@@ -1228,9 +1249,12 @@
        peso visual"). */
     window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
     const mode = generatePdf(calcCurrentState, calcCurrentResult, details);
+    /* 'error' e 'inapp' ya mostraron su propio toast explicando qué pasó
+       dentro de generatePdf() — sumar aquí un mensaje de éxito genérico
+       lo taparía y mentiría sobre si el PDF de verdad se generó. */
     if (mode === 'tab') {
       showToast('Te abrí WhatsApp con todos los detalles — tu cotización en PDF se abrió en otra pestaña, mándasela también si quieres que Camilo la vea completa.');
-    } else if (mode !== 'error') {
+    } else if (mode === 'download') {
       showToast('Descargué tu cotización en PDF y te abrí WhatsApp con todos los detalles — mándale el PDF también si quieres que Camilo lo vea completo.');
     }
     closeDetailsModal();
