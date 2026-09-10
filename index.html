@@ -562,6 +562,10 @@
       <h3 id="detailsTitle" class="calc__title">Cuéntame tu idea</h3>
       <p class="details__hint">Todo esto es opcional: puedes enviarlo en blanco, pero entre más me cuentes, mejor entiendo tu idea antes de hablar.</p>
 
+      <div class="calc__actions calc__actions--top">
+        <button type="button" class="calc__whatsapp btn-flashy" data-details-confirm>Confirmar y enviar</button>
+      </div>
+
       <div class="calc__field">
         <label class="calc__label" for="detName">Nombre de la persona, marca o empresa</label>
         <input class="calc__number" type="text" id="detName" maxlength="60" placeholder="Ej: Ana Pérez o Estudio Creativo XYZ">
@@ -631,14 +635,74 @@
       </div>
 
       <div class="calc__field">
-        <label class="calc__label" for="detExportSpecs">Especificaciones de exportación</label>
-        <p class="calc__field-hint">Formato de archivo, códecs de video/audio, u otro detalle técnico. Déjalo en blanco para el estándar (MP4, H.264, audio AAC).</p>
-        <textarea class="calc__number calc__textarea" id="detExportSpecs" rows="2" maxlength="300" placeholder="Ej: MP4 H.264, audio AAC 48kHz, 29.97fps"></textarea>
+        <span class="calc__label">Especificaciones de exportación</span>
+        <p class="calc__field-hint">Si no sabes qué elegir, deja todo en "Estándar" — es lo que uso por defecto.</p>
+        <div class="calc__export-specs">
+          <div class="calc__export-group">
+            <span class="calc__export-subhead">Video</span>
+            <label class="calc__select-label" for="detExpContainer">Formato de archivo
+              <select class="calc__select" id="detExpContainer">
+                <option value="">Estándar (MP4)</option>
+                <option value="MP4">MP4</option>
+                <option value="MOV (QuickTime)">MOV (QuickTime)</option>
+                <option value="MKV">MKV</option>
+                <option value="WebM">WebM</option>
+              </select>
+            </label>
+            <label class="calc__select-label" for="detExpVideoCodec">Códec de video
+              <select class="calc__select" id="detExpVideoCodec">
+                <option value="">Estándar (H.264)</option>
+                <option value="H.264 (AVC)">H.264 (AVC)</option>
+                <option value="H.265 (HEVC)">H.265 (HEVC)</option>
+                <option value="ProRes">ProRes</option>
+                <option value="VP9">VP9</option>
+              </select>
+            </label>
+            <label class="calc__select-label" for="detExpFps">Cuadros por segundo
+              <select class="calc__select" id="detExpFps">
+                <option value="">Estándar (igual al original)</option>
+                <option value="23.976 fps">23.976 fps</option>
+                <option value="24 fps">24 fps</option>
+                <option value="25 fps">25 fps</option>
+                <option value="29.97 fps">29.97 fps</option>
+                <option value="30 fps">30 fps</option>
+                <option value="50 fps">50 fps</option>
+                <option value="60 fps">60 fps</option>
+              </select>
+            </label>
+          </div>
+          <div class="calc__export-group">
+            <span class="calc__export-subhead">Audio</span>
+            <label class="calc__select-label" for="detExpAudioCodec">Códec de audio
+              <select class="calc__select" id="detExpAudioCodec">
+                <option value="">Estándar (AAC)</option>
+                <option value="AAC">AAC</option>
+                <option value="MP3">MP3</option>
+                <option value="WAV (sin comprimir)">WAV (sin comprimir)</option>
+                <option value="ALAC">ALAC</option>
+              </select>
+            </label>
+            <label class="calc__select-label" for="detExpSampleRate">Frecuencia de muestreo
+              <select class="calc__select" id="detExpSampleRate">
+                <option value="">Estándar (48 kHz)</option>
+                <option value="44.1 kHz">44.1 kHz</option>
+                <option value="48 kHz">48 kHz</option>
+                <option value="96 kHz">96 kHz</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="calc__field" id="detAlmacenamientoField" hidden>
+        <label class="calc__label" for="detAlmacenamientoMetodo">Plataforma o método para enviar el archivo</label>
+        <p class="calc__field-hint">Elegiste aportar tú el almacenamiento — dime por dónde te llega el material o por dónde te envío el video.</p>
+        <input class="calc__number" type="text" id="detAlmacenamientoMetodo" maxlength="80" placeholder="Ej: WeTransfer, un enlace de Drive, Dropbox...">
       </div>
 
       <div class="calc__actions">
         <button type="button" class="calc__export" id="detailsPdfBtn">Guardar en PDF</button>
-        <button type="button" class="calc__whatsapp btn-flashy" id="detailsConfirmBtn">Confirmar y enviar</button>
+        <button type="button" class="calc__whatsapp btn-flashy" data-details-confirm>Confirmar y enviar</button>
       </div>
     </div>
   </div>

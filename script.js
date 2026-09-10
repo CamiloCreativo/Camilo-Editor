@@ -525,6 +525,17 @@
     return (minDays === maxDays ? minDays : minDays + '–' + maxDays) + ' días hábiles';
   }
 
+  /* Compartida entre el PDF y la imagen: si el cliente aporta el
+     almacenamiento y dejó dicho por dónde (WeTransfer, Drive, lo que
+     sea), se lo suma a la etiqueta — sin eso, el documento solo diría
+     "Tú lo aportas" sin decir por dónde llega el archivo. */
+  function formatAlmacenamiento(state, details) {
+    const almacen = PRICING.almacenamiento[state.almacenamiento];
+    const metodo = details && details.almacenamientoMetodo;
+    const label = (state.almacenamiento === 'cliente' && metodo) ? (almacen.label + ' — ' + metodo) : almacen.label;
+    return almacen.amount > 0 ? (label + ' (+$' + almacen.amount + ')') : label;
+  }
+
   /* Por debajo del primer tramo el plazo es plano, igual que el precio
      (priceForDuration): un video de 20 segundos no se entrega más rápido
      que uno de 1–2 min. Por encima del último tramo (20 min) devuelve el
@@ -779,10 +790,34 @@
       textRight(PRICING.resolucion[state.resolucion].label, y);
 
       y += S(20);
-      const almacen = PRICING.almacenamiento[state.almacenamiento];
-      doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 51, 102);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5)); doc.setTextColor(0, 51, 102);
       put('Almacenamiento de entrega', y);
-      textRight(almacen.amount > 0 ? (almacen.label + ' (+$' + almacen.amount + ')') : almacen.label, y);
+      /* El método que escribe el cliente (hasta 80 caracteres) no cabe
+         siempre a la derecha en una sola línea junto a la etiqueta —a
+         diferencia del resto de RECARGOS, que son valores cortos fijos—,
+         así que se mide antes de decidir: si no entra, baja como texto
+         envuelto en vez de seguir de largo fuera del margen. */
+      {
+        const almacenText = formatAlmacenamiento(state, details);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(S(10.5));
+        const fitsOneLine = doc.getTextWidth(almacenText) <= (pageW - mx * 2) * 0.58;
+        if (fitsOneLine) {
+          textRight(almacenText, y);
+        } else {
+          y += S(14);
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(S(9.5));
+          doc.splitTextToSize(almacenText, pageW - mx * 2).forEach((line, i) => {
+            if (i > 0) y += S(13);
+            put(line, y);
+          });
+        }
+        /* A diferencia del resto de RECARGOS, esta fila puede dejar el
+           font en negrita (rama de una línea) o en 9.5pt (rama
+           envuelta) — sin resetear aquí, "Sincronizar" y "Entrega
+           urgente" heredarían ese estado por accidente, ya que ninguna
+           de las dos vuelve a llamar `doc.setFont()` por su cuenta. */
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(S(10.5));
+      }
 
       y += S(20);
       const mcOn = state.multicam;
@@ -1003,11 +1038,23 @@
     setFont('bold', 14); textRight(PRICING.resolucion[state.resolucion].label, y);
 
     y += 26;
-    const almacen = PRICING.almacenamiento[state.almacenamiento];
     setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
     text('Almacenamiento de entrega', mx, y);
-    setFont('bold', 14);
-    textRight(almacen.amount > 0 ? (almacen.label + ' (+$' + almacen.amount + ')') : almacen.label, y);
+    {
+      const almacenText = formatAlmacenamiento(state, details);
+      setFont('bold', 14);
+      const fitsOneLine = ctx.measureText(almacenText).width <= contentWidth * 0.58;
+      if (fitsOneLine) {
+        textRight(almacenText, y);
+      } else {
+        y += 20;
+        setFont('normal', 13);
+        wrap(almacenText, contentWidth).forEach((line, i) => {
+          if (i > 0) y += 18;
+          text(line, mx, y);
+        });
+      }
+    }
 
     y += 26;
     const mcOn = state.multicam;
@@ -1171,7 +1218,6 @@
      Se abre al pulsar "Enviar" en la calculadora. Mismo patrón de
      apertura/cierre/foco que los otros dos modales. */
   const detailsModal = document.getElementById('detailsModal');
-  const detailsConfirmBtn = document.getElementById('detailsConfirmBtn');
   let detailsLastFocused = null;
 
   function readDetailsState() {
@@ -1189,6 +1235,16 @@
         }
         return el.nextElementSibling ? el.nextElementSibling.textContent : el.value;
       });
+    /* Cinco desplegables en vez de un solo campo libre: cada uno reporta
+       "" en su opción "Estándar", así que solo se listan los que la
+       persona de verdad cambió. Sin ninguno tocado, queda el mismo
+       texto por defecto que antes escribía el campo libre. */
+    const expParts = [];
+    if (val('detExpContainer')) expParts.push(val('detExpContainer'));
+    if (val('detExpVideoCodec')) expParts.push('video ' + val('detExpVideoCodec'));
+    if (val('detExpFps')) expParts.push(val('detExpFps'));
+    if (val('detExpAudioCodec')) expParts.push('audio ' + val('detExpAudioCodec'));
+    if (val('detExpSampleRate')) expParts.push(val('detExpSampleRate'));
     return {
       nombre: val('detName'),
       descripcion: val('detDescripcion'),
@@ -1198,13 +1254,21 @@
       tono: checked('detTono'),
       ritmo: checked('detRitmo'),
       requerimientos: val('detRequerimientos'),
-      exportSpecs: val('detExportSpecs')
+      exportSpecs: expParts.length ? expParts.join(', ') : 'Estándar (MP4, H.264, audio AAC 48kHz)',
+      almacenamientoMetodo: val('detAlmacenamientoMetodo')
     };
   }
 
+  /* El campo de método de entrega solo tiene sentido si el cliente
+     aporta el almacenamiento — si lo aporta Camilo, ya se sabe que es
+     por Drive y no hace falta preguntar nada más. Se decide acá, al
+     abrir, en vez de en el radio de la calculadora, porque es un dato
+     del proyecto (dónde vive el archivo), no del precio. */
   function openDetailsModal() {
     if (!detailsModal) return;
     detailsLastFocused = document.activeElement;
+    const almacenField = document.getElementById('detAlmacenamientoField');
+    if (almacenField) almacenField.hidden = !calcCurrentState || calcCurrentState.almacenamiento !== 'cliente';
     detailsModal.classList.add('is-open');
     detailsModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
@@ -1279,7 +1343,10 @@
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     generatePdf(calcCurrentState, calcCurrentResult, readDetailsState());
   });
-  if (detailsConfirmBtn) detailsConfirmBtn.addEventListener('click', confirmAndSend);
+  /* Dos botones —arriba y al final del formulario, ya largo con guion,
+     tags y especificaciones de exportación— para que nadie tenga que
+     bajar todo el modal solo para encontrar "Confirmar y enviar". */
+  document.querySelectorAll('[data-details-confirm]').forEach(btn => btn.addEventListener('click', confirmAndSend));
   document.querySelectorAll('[data-close-details]').forEach(el => el.addEventListener('click', closeDetailsModal));
 
   /* Escape y el atrapa-foco valen para el modal que esté abierto —video,

@@ -1566,6 +1566,46 @@ h1, h2, h3, .bebas {
    del manual de marca) y un placeholder es texto normal. */
 .calc__number::placeholder { color: var(--ink-txt); opacity: 1; }
 
+/* Las especificaciones de exportación: dos grupos (video/audio) en
+   columnas en escritorio, apilados en móvil — mismo quiebre que el
+   resto de la calculadora. Cada select lleva su etiqueta encima, como
+   un .calc__field en miniatura, para no repetir el patrón label+input
+   suelto de los campos de texto. */
+.calc__export-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(16px, 3vw, 28px);
+}
+@media (max-width: 640px) {
+  .calc__export-specs { grid-template-columns: 1fr; }
+}
+.calc__export-group { display: flex; flex-direction: column; gap: 12px; }
+.calc__export-subhead {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--earth);
+}
+.calc__select-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-txt);
+}
+.calc__select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1.4px solid var(--ink-line);
+  border-radius: 8px;
+  font-family: var(--font-cuerpo);
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: var(--ground);
+}
+.calc__select:focus-visible { outline: 2px solid var(--flare); outline-offset: 1px; }
+
 .calc__checks { display: flex; flex-direction: column; gap: 10px; }
 .calc__checks label, .calc__check-solo {
   display: flex;
@@ -1641,6 +1681,10 @@ h1, h2, h3, .bebas {
   gap: 12px;
   margin-top: clamp(20px, 3vw, 28px);
 }
+/* El "Confirmar y enviar" de arriba —para no obligar a bajar todo el
+   formulario para encontrarlo— nace pegado al aviso, no al final de un
+   bloque de campos. */
+.calc__actions--top { margin: 4px 0 clamp(20px, 3vw, 28px); }
 /* Es la acción que de verdad convierte —"Enviar" y "Confirmar y
    enviar"—, así que pasó de contorno a naranja lleno con .btn-flashy: el
    PDF (.calc__export) es el secundario ahora. */
