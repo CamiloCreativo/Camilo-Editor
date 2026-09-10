@@ -87,7 +87,7 @@ html {
      detenerse ahí, en vez de llegar a la sección real. motion.js hace el
      scroll suave con GSAP (ScrollToPlugin), que sí sabe convivir con los
      pines; sin GSAP, el salto queda instantáneo pero exacto — mejor eso
-     que "suave pero roto". -->
+     que "suave pero roto". */
   -webkit-text-size-adjust: 100%;
 }
 
