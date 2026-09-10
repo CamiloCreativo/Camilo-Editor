@@ -33,7 +33,7 @@
 
     <button class="nav__toggle" id="navToggle" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="navLinks">
       <span></span><span></span>
-    </button>
+    </button> ,
 
     <nav class="nav__links" id="navLinks" aria-label="Principal">
       <a href="#inicio" class="nav__link">Inicio</a>
@@ -389,6 +389,7 @@
               <div class="precios__row"><dt>SFX (efectos de sonido)</dt><dd>$5–15 / video</dd></div>
               <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$15–25 / video</dd></div>
               <div class="precios__row"><dt>Miniatura</dt><dd>$10–15</dd></div>
+              <div class="precios__row"><dt>Redactar guion o estructura</dt><dd>$15–25 / video</dd></div>
             </dl>
           </div>
           <div>
@@ -400,6 +401,7 @@
               <div class="precios__row"><dt>Sincronizar 2+ cámaras</dt><dd>+15–20%</dd></div>
               <div class="precios__row"><dt>Ronda de revisión adicional</dt><dd>+15% / ronda</dd></div>
               <div class="precios__row"><dt>Entrega urgente (mitad del plazo estimado)</dt><dd>+50%</dd></div>
+              <div class="precios__row"><dt>Almacenamiento de entrega (si lo aporto yo, por Drive)</dt><dd>$5 / video</dd></div>
             </dl>
           </div>
         </div>
@@ -494,6 +496,7 @@
           <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX (efectos de sonido)</span></label>
           <label><input type="checkbox" name="calcExtra" value="locucion"><span>Locución o voz en off (IA)</span></label>
           <label><input type="checkbox" name="calcExtra" value="miniatura"><span>Miniatura</span></label>
+          <label><input type="checkbox" name="calcExtra" value="guion"><span>Redactar guion o estructura</span></label>
         </div>
       </div>
 
@@ -503,6 +506,15 @@
           <label class="calc__pill"><input type="radio" name="calcRes" value="sd" checked><span>Hasta 1080p</span></label>
           <label class="calc__pill"><input type="radio" name="calcRes" value="2k"><span>1440p / 2K</span></label>
           <label class="calc__pill"><input type="radio" name="calcRes" value="4k"><span>2160p / 4K</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Almacenamiento de entrega</span>
+        <p class="calc__field-hint">Cómo te llega el archivo final. Si lo aporto yo, es por Google Drive.</p>
+        <div class="calc__pills" role="radiogroup" aria-label="Quién aporta el almacenamiento de entrega">
+          <label class="calc__pill"><input type="radio" name="calcAlmacenamiento" value="cliente" checked><span>Tú lo aportas</span></label>
+          <label class="calc__pill"><input type="radio" name="calcAlmacenamiento" value="camilo"><span>Yo lo aporto (Drive)</span></label>
         </div>
       </div>
 
@@ -561,24 +573,32 @@
       </div>
 
       <div class="calc__field">
+        <label class="calc__label" for="detGuion">Guion o estructura del video</label>
+        <p class="calc__field-hint">Dónde va cada recurso, o qué no hace falta incluir. Marcas de tiempo si puedes, pero no es obligatorio.</p>
+        <textarea class="calc__number calc__textarea" id="detGuion" rows="3" maxlength="600" placeholder="Ej: 0:00 intro con logo, 0:05 testimonio del cliente 1, 0:20 mostrar el producto..."></textarea>
+      </div>
+
+      <div class="calc__field">
         <span class="calc__label">Formato</span>
         <div class="calc__pills" role="group" aria-label="Formato del video">
           <label class="calc__pill"><input type="checkbox" name="detFormato" value="vertical"><span>Reel / Short vertical</span></label>
           <label class="calc__pill"><input type="checkbox" name="detFormato" value="horizontal"><span>Video horizontal (YouTube)</span></label>
           <label class="calc__pill"><input type="checkbox" name="detFormato" value="cuadrado"><span>Cuadrado (1:1)</span></label>
-          <label class="calc__pill"><input type="checkbox" name="detFormato" value="multiple"><span>Varios formatos</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detFormato" value="otro" data-other="detFormatoOtro"><span>Otro</span></label>
         </div>
+        <input type="text" class="calc__number calc__other-input" id="detFormatoOtro" maxlength="60" placeholder="Especifica el formato" hidden>
       </div>
 
       <div class="calc__field">
         <span class="calc__label">Estilo</span>
         <div class="calc__pills" role="group" aria-label="Estilo del video">
-          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="dinamico"><span>Dinámico y rápido</span></label>
           <label class="calc__pill"><input type="checkbox" name="detEstilo" value="cinematografico"><span>Cinematográfico</span></label>
           <label class="calc__pill"><input type="checkbox" name="detEstilo" value="documental"><span>Documental / testimonial</span></label>
           <label class="calc__pill"><input type="checkbox" name="detEstilo" value="minimalista"><span>Minimalista y limpio</span></label>
           <label class="calc__pill"><input type="checkbox" name="detEstilo" value="llamativo"><span>Llamativo / redes</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="otro" data-other="detEstiloOtro"><span>Otro</span></label>
         </div>
+        <input type="text" class="calc__number calc__other-input" id="detEstiloOtro" maxlength="60" placeholder="Especifica el estilo" hidden>
       </div>
 
       <div class="calc__field">
@@ -589,7 +609,9 @@
           <label class="calc__pill"><input type="checkbox" name="detTono" value="divertido"><span>Divertido / humor</span></label>
           <label class="calc__pill"><input type="checkbox" name="detTono" value="inspirador"><span>Inspirador / emotivo</span></label>
           <label class="calc__pill"><input type="checkbox" name="detTono" value="serio"><span>Serio / formal</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detTono" value="otro" data-other="detTonoOtro"><span>Otro</span></label>
         </div>
+        <input type="text" class="calc__number calc__other-input" id="detTonoOtro" maxlength="60" placeholder="Especifica el tono" hidden>
       </div>
 
       <div class="calc__field">
@@ -598,12 +620,20 @@
           <label class="calc__pill"><input type="checkbox" name="detRitmo" value="rapido"><span>Muy rápido, mucho corte</span></label>
           <label class="calc__pill"><input type="checkbox" name="detRitmo" value="medio"><span>Medio</span></label>
           <label class="calc__pill"><input type="checkbox" name="detRitmo" value="pausado"><span>Pausado / contemplativo</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detRitmo" value="otro" data-other="detRitmoOtro"><span>Otro</span></label>
         </div>
+        <input type="text" class="calc__number calc__other-input" id="detRitmoOtro" maxlength="60" placeholder="Especifica el ritmo" hidden>
       </div>
 
       <div class="calc__field">
         <label class="calc__label" for="detRequerimientos">Requerimientos específicos</label>
         <textarea class="calc__number calc__textarea" id="detRequerimientos" rows="3" maxlength="600" placeholder="Ej: el logo debe aparecer en la esquina, evita transiciones bruscas, usa la música que te compartí"></textarea>
+      </div>
+
+      <div class="calc__field">
+        <label class="calc__label" for="detExportSpecs">Especificaciones de exportación</label>
+        <p class="calc__field-hint">Formato de archivo, códecs de video/audio, u otro detalle técnico. Déjalo en blanco para el estándar (MP4, H.264, audio AAC).</p>
+        <textarea class="calc__number calc__textarea" id="detExportSpecs" rows="2" maxlength="300" placeholder="Ej: MP4 H.264, audio AAC 48kHz, 29.97fps"></textarea>
       </div>
 
       <div class="calc__actions">

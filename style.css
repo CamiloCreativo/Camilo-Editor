@@ -1523,6 +1523,10 @@ h1, h2, h3, .bebas {
 }
 
 .calc__pills { display: flex; flex-wrap: wrap; gap: 8px; }
+/* El campo de texto que revela el pill "Otro" — mismo input que el
+   resto, solo que nace oculto y con un poco de aire respecto a los
+   pills de arriba. */
+.calc__other-input { margin-top: 10px; }
 .calc__pill input {
   position: absolute;
   opacity: 0;

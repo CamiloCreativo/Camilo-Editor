@@ -470,12 +470,17 @@
       { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
       { id: 'sfx', label: 'SFX (efectos de sonido)', kind: 'flat', amount: 10 }, // $5–15, punto medio
       { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio
-      { id: 'miniatura', label: 'Miniatura', kind: 'flat', amount: 12 }    // $10–15, punto medio
+      { id: 'miniatura', label: 'Miniatura', kind: 'flat', amount: 12 },   // $10–15, punto medio
+      { id: 'guion', label: 'Redactar guion o estructura', kind: 'flat', amount: 20 } // $15–25, punto medio — repuesto 2026-09-10
     ],
     resolucion: {
       sd: { label: 'Hasta 1080p', pct: 0 },
       '2k': { label: '1440p / 2K', pct: 0.15 },
       '4k': { label: '2160p / 4K', pct: 0.25 }
+    },
+    almacenamiento: {
+      cliente: { label: 'Tú lo aportas', amount: 0 },
+      camilo: { label: 'Yo lo aporto (Google Drive)', amount: 5 } // propuesto — sin calibrar
     },
     multicamLabel: 'Sincronizar 2+ cámaras',
     multicamPct: 0.18, // +15–20%, punto medio
@@ -563,6 +568,7 @@
     if (!calcModal) return null;
     const tier = (calcModal.querySelector('input[name="calcTier"]:checked') || {}).value || 'basico';
     const resolucion = (calcModal.querySelector('input[name="calcRes"]:checked') || {}).value || 'sd';
+    const almacenamiento = (calcModal.querySelector('input[name="calcAlmacenamiento"]:checked') || {}).value || 'cliente';
     const minInput = document.getElementById('calcMin');
     const secInput = document.getElementById('calcSec');
     const min = minInput ? Math.max(0, Number(minInput.value) || 0) : 1;
@@ -575,7 +581,7 @@
     const extraRevisions = revInput ? Math.min(5, Math.max(0, Number(revInput.value) || 0)) : 0;
     const urgenteEl = document.getElementById('calcUrgente');
     const urgente = !!(urgenteEl && urgenteEl.checked);
-    return { tier, min, sec, minutes, resolucion, extras, multicam, extraRevisions, urgente };
+    return { tier, min, sec, minutes, resolucion, almacenamiento, extras, multicam, extraRevisions, urgente };
   }
 
   function computeEstimate(state) {
@@ -586,6 +592,7 @@
       if (!ex) return;
       extrasTotal += ex.kind === 'perMin' ? ex.rate * state.minutes : ex.amount;
     });
+    extrasTotal += PRICING.almacenamiento[state.almacenamiento] ? PRICING.almacenamiento[state.almacenamiento].amount : 0;
     const subtotal = base + extrasTotal;
     let pct = PRICING.resolucion[state.resolucion] ? PRICING.resolucion[state.resolucion].pct : 0;
     if (state.multicam) pct += PRICING.multicamPct;
@@ -772,6 +779,12 @@
       textRight(PRICING.resolucion[state.resolucion].label, y);
 
       y += S(20);
+      const almacen = PRICING.almacenamiento[state.almacenamiento];
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 51, 102);
+      put('Almacenamiento de entrega', y);
+      textRight(almacen.amount > 0 ? (almacen.label + ' (+$' + almacen.amount + ')') : almacen.label, y);
+
+      y += S(20);
       const mcOn = state.multicam;
       doc.setTextColor(mcOn ? 0 : 178, mcOn ? 51 : 178, mcOn ? 102 : 178);
       put(PRICING.multicamLabel, y);
@@ -822,11 +835,13 @@
           });
         };
         addWrapped('Descripción', details.descripcion || 'No especificada');
+        addWrapped('Guion o estructura', details.guion || 'No especificado');
         addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
         addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
         addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
         addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
         addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
+        addWrapped('Especificaciones de exportación', details.exportSpecs || 'Estándar (MP4, H.264, audio AAC)');
       }
 
       y += S(44);
@@ -988,6 +1003,13 @@
     setFont('bold', 14); textRight(PRICING.resolucion[state.resolucion].label, y);
 
     y += 26;
+    const almacen = PRICING.almacenamiento[state.almacenamiento];
+    setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
+    text('Almacenamiento de entrega', mx, y);
+    setFont('bold', 14);
+    textRight(almacen.amount > 0 ? (almacen.label + ' (+$' + almacen.amount + ')') : almacen.label, y);
+
+    y += 26;
     const mcOn = state.multicam;
     setFont('normal', 14);
     ctx.fillStyle = mcOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
@@ -1037,11 +1059,13 @@
         lines.forEach(line => { text(line, mx, y); y += 18; });
       };
       addWrapped('Descripción', details.descripcion || 'No especificada');
+      addWrapped('Guion o estructura', details.guion || 'No especificado');
       addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
       addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
       addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
       addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
       addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
+      addWrapped('Especificaciones de exportación', details.exportSpecs || 'Estándar (MP4, H.264, audio AAC)');
     }
 
     y += 50;
@@ -1152,16 +1176,29 @@
 
   function readDetailsState() {
     const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    /* El pill "Otro" no se reporta como el texto "Otro": se resuelve
+       contra el input que revela (`data-other`), y si la persona no
+       escribió nada igual se avisa que marcó "Otro" sin especificar,
+       en vez de perder la selección en silencio. */
     const checked = name => !detailsModal ? [] : Array.from(detailsModal.querySelectorAll('input[name="' + name + '"]:checked'))
-      .map(el => (el.nextElementSibling ? el.nextElementSibling.textContent : el.value));
+      .map(el => {
+        if (el.value === 'otro') {
+          const other = el.dataset.other ? document.getElementById(el.dataset.other) : null;
+          const custom = other ? other.value.trim() : '';
+          return custom ? ('Otro: ' + custom) : 'Otro (sin especificar)';
+        }
+        return el.nextElementSibling ? el.nextElementSibling.textContent : el.value;
+      });
     return {
       nombre: val('detName'),
       descripcion: val('detDescripcion'),
+      guion: val('detGuion'),
       formato: checked('detFormato'),
       estilo: checked('detEstilo'),
       tono: checked('detTono'),
       ritmo: checked('detRitmo'),
-      requerimientos: val('detRequerimientos')
+      requerimientos: val('detRequerimientos'),
+      exportSpecs: val('detExportSpecs')
     };
   }
 
@@ -1181,6 +1218,21 @@
     detailsModal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     if (detailsLastFocused && detailsLastFocused.focus) detailsLastFocused.focus();
+  }
+
+  /* Cada pill "Otro" (Formato/Estilo/Tono/Ritmo) revela su propio campo
+     de texto vía `data-other`, en vez de un solo campo compartido —así
+     "Otro" en Estilo no se confunde con "Otro" en Tono si alguien marca
+     los dos. */
+  if (detailsModal) {
+    detailsModal.querySelectorAll('input[value="otro"]').forEach(el => {
+      const other = el.dataset.other ? document.getElementById(el.dataset.other) : null;
+      if (!other) return;
+      el.addEventListener('change', () => {
+        other.hidden = !el.checked;
+        if (el.checked) other.focus();
+      });
+    });
   }
 
   /* La Web Share API se había probado y descartado una vez por el
