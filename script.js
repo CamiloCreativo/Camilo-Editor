@@ -466,7 +466,7 @@
       pro: { label: 'Pro', points: [[1, 50], [2, 100], [5, 230], [10, 450], [15, 650], [20, 850]] }
     },
     extras: [
-      { id: 'broll', label: 'Buscar y curar B-roll', kind: 'perMin', rate: 7.5 },      // $5–10/min, punto medio
+      { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'perMin', rate: 7.5 },    // $5–10/min, punto medio
       { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
       { id: 'sfx', label: 'SFX fuera de mi librería', kind: 'flat', amount: 10 },      // $5–15, punto medio
       { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio
@@ -517,9 +517,7 @@
     const extras = Array.from(calcModal.querySelectorAll('input[name="calcExtra"]:checked')).map(el => el.value);
     const multicamEl = document.getElementById('calcMulticam');
     const multicam = !!(multicamEl && multicamEl.checked);
-    const nameEl = document.getElementById('calcName');
-    const nombre = nameEl ? nameEl.value.trim() : '';
-    return { tier, min, sec, minutes, resolucion, extras, multicam, nombre };
+    return { tier, min, sec, minutes, resolucion, extras, multicam };
   }
 
   function computeEstimate(state) {
@@ -622,7 +620,7 @@
 
     y += 32;
     doc.setFontSize(22); doc.setTextColor(0, 51, 102);
-    doc.text(state.nombre ? ('Cotización para ' + state.nombre) : 'Cotización de edición de video', mx, y);
+    doc.text('Cotización de edición de video', mx, y);
 
     y += 17;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(135, 135, 135);
@@ -684,15 +682,22 @@
     doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(165, 165, 165);
     doc.text('No es una cotizacion cerrada: el numero final puede variar segun el detalle del proyecto.', mx, y);
 
-    const base = state.nombre
-      ? state.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-      : '';
-    doc.save('cotizacion-camilo-creativo' + (base ? '-' + base : '') + '.pdf');
+    doc.save('cotizacion-camilo-creativo.pdf');
   }
 
-  function buildWhatsappText(state, result) {
+  /* "Ana Pérez" -> "ana-perez", para nombrar el PNG de la cotización con
+     detalles. Comparte la normalización que antes vivía en el PDF. */
+  function slugify(text) {
+    return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+
+  /* details es opcional: sin él (no debería pasar, "Enviar" siempre pasa
+     por el modal de detalles) el mensaje se arma igual, solo sin la
+     sección de proyecto. */
+  function buildWhatsappText(state, result, details) {
     const lines = [];
-    lines.push('Hola Camilo!' + (state.nombre ? ' Soy ' + state.nombre + '.' : ''));
+    const nombre = details && details.nombre;
+    lines.push('Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : ''));
     lines.push('Quiero cotizar un video:');
     lines.push('- Nivel: ' + PRICING.tiers[state.tier].label);
     lines.push('- Duración: ' + formatDuration(state));
@@ -701,19 +706,202 @@
     });
     if (state.resolucion !== 'sd') lines.push('- Resolución: ' + PRICING.resolucion[state.resolucion].label);
     lines.push('- Estimado: $' + result.total + ' USD');
+
+    if (details) {
+      lines.push('');
+      lines.push('Sobre el proyecto:');
+      lines.push('- Descripción: ' + (details.descripcion || 'no especificada'));
+      lines.push('- Formato: ' + (details.formato.length ? details.formato.join(', ') : 'no especificado'));
+      lines.push('- Estilo: ' + (details.estilo.length ? details.estilo.join(', ') : 'no especificado'));
+      lines.push('- Tono: ' + (details.tono.length ? details.tono.join(', ') : 'no especificado'));
+      lines.push('- Ritmo: ' + (details.ritmo.length ? details.ritmo.join(', ') : 'no especificado'));
+      lines.push('- Requerimientos: ' + (details.requerimientos || 'ninguno'));
+      lines.push('');
+      lines.push('Te acabo de enviar por aquí la imagen con el detalle completo.');
+    }
+
     lines.push('');
     lines.push('¿Hablamos?');
     return lines.join('\n');
   }
 
-  function sendCalcWhatsapp() {
-    if (!calcCurrentState || !calcCurrentResult) updateCalc();
-    const text = buildWhatsappText(calcCurrentState, calcCurrentResult);
-    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+  /* ---------- Imagen de la cotización con detalles ----------
+     wa.me solo puede prellenar TEXTO en el chat: no existe forma de
+     adjuntar un archivo desde un enlace de WhatsApp Click to Chat. Por
+     eso "Confirmar y enviar" abre el texto Y descarga aparte una imagen
+     con el mismo contenido y diseño del PDF —showToast() en
+     confirmAndSend() deja explícito que hay que adjuntarla a mano en el
+     chat que se acaba de abrir: "fallar ruidosamente" antes que fingir
+     una automatización que no existe.
+
+     measureAndDraw recorre la MISMA lista de bloques dos veces: una sin
+     dibujar (solo para sumar el alto real y poder dimensionar el lienzo
+     antes de crearlo) y otra dibujando de verdad. Una sola función de
+     layout evita mantener la posición de cada línea por partida doble. */
+  const QUOTE_IMG = {
+    width: 960,
+    margin: 56,
+    colors: { ink: '#003366', inkTxt: 'rgba(0,51,102,0.72)', earth: '#5A3E2B', flare: '#E36414', ground: '#F5F5F5', grey: '#878787', lightGrey: '#B2B2B2' }
+  };
+
+  function wrapCanvasText(ctx, text, maxWidth) {
+    const words = String(text).split(/\s+/);
+    const lines = [];
+    let line = '';
+    words.forEach(word => {
+      const test = line ? line + ' ' + word : word;
+      if (line && ctx.measureText(test).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function buildQuoteBlocks(state, result, details) {
+    const blocks = [
+      { t: 'brand' },
+      { t: 'title', text: 'COTIZACIÓN DE EDICIÓN DE VIDEO' },
+      { t: 'date', text: new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) },
+      { t: 'divider' },
+      { t: 'kv', label: 'Nivel', value: PRICING.tiers[state.tier].label },
+      { t: 'kv', label: 'Duración', value: formatDuration(state) },
+      { t: 'divider' },
+      { t: 'section', text: 'EXTRAS' }
+    ];
+    PRICING.extras.forEach(ex => blocks.push({ t: 'status', label: ex.label, on: state.extras.indexOf(ex.id) !== -1 }));
+    blocks.push(
+      { t: 'divider' },
+      { t: 'section', text: 'RECARGOS' },
+      { t: 'kv', label: 'Resolución de entrega', value: PRICING.resolucion[state.resolucion].label },
+      { t: 'status', label: PRICING.multicamLabel, on: state.multicam }
+    );
+
+    if (details) {
+      blocks.push(
+        { t: 'divider' },
+        { t: 'section', text: 'PROYECTO' },
+        { t: 'kv', label: 'Para', value: details.nombre || 'No especificado' },
+        { t: 'wrapped', label: 'Descripción', text: details.descripcion || 'No especificada' },
+        { t: 'wrapped', label: 'Formato', text: details.formato.length ? details.formato.join(', ') : 'No especificado' },
+        { t: 'wrapped', label: 'Estilo', text: details.estilo.length ? details.estilo.join(', ') : 'No especificado' },
+        { t: 'wrapped', label: 'Tono', text: details.tono.length ? details.tono.join(', ') : 'No especificado' },
+        { t: 'wrapped', label: 'Ritmo', text: details.ritmo.length ? details.ritmo.join(', ') : 'No especificado' },
+        { t: 'wrapped', label: 'Requerimientos específicos', text: details.requerimientos || 'Ninguno' }
+      );
+    }
+
+    blocks.push(
+      { t: 'total', value: '$' + result.total + ' USD' },
+      { t: 'footnote', text: 'No es una cotización cerrada: el número final puede variar según el detalle del proyecto.' }
+    );
+    return blocks;
+  }
+
+  function layoutQuoteBlocks(ctx, blocks, draw) {
+    const { width, margin, colors: C } = QUOTE_IMG;
+    const contentW = width - margin * 2;
+    let y = 70;
+    const setFont = (weight, size, family) => { ctx.font = (weight ? weight + ' ' : '') + size + 'px ' + family; };
+
+    blocks.forEach(b => {
+      if (b.t === 'brand') {
+        setFont('700', 15, "'Raleway', sans-serif");
+        if (draw) { ctx.fillStyle = C.flare; ctx.fillText('CAMILO CREATIVO', margin, y); }
+        y += 34;
+      } else if (b.t === 'title') {
+        setFont('400', 34, "'Bebas Neue', sans-serif");
+        if (draw) { ctx.fillStyle = C.ink; ctx.fillText(b.text, margin, y); }
+        y += 20;
+      } else if (b.t === 'date') {
+        setFont('400', 13, "'Raleway', sans-serif");
+        if (draw) { ctx.fillStyle = C.grey; ctx.fillText(b.text, margin, y); }
+        y += 26;
+      } else if (b.t === 'divider') {
+        y += 12;
+        if (draw) { ctx.strokeStyle = 'rgba(0,51,102,0.16)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke(); }
+        y += 26;
+      } else if (b.t === 'section') {
+        setFont('700', 12, "'Raleway', sans-serif");
+        if (draw) { ctx.fillStyle = C.earth; ctx.fillText(b.text, margin, y); }
+        y += 26;
+      } else if (b.t === 'kv') {
+        setFont('400', 15, "'Raleway', sans-serif");
+        if (draw) {
+          ctx.fillStyle = C.ink; ctx.textAlign = 'left'; ctx.fillText(b.label, margin, y);
+          ctx.font = "700 15px 'Raleway', sans-serif";
+          ctx.textAlign = 'right'; ctx.fillText(b.value, width - margin, y);
+          ctx.textAlign = 'left';
+        }
+        y += 30;
+      } else if (b.t === 'status') {
+        setFont('400', 15, "'Raleway', sans-serif");
+        if (draw) {
+          ctx.fillStyle = b.on ? C.ink : C.lightGrey;
+          ctx.textAlign = 'left'; ctx.fillText(b.label, margin, y);
+          ctx.textAlign = 'right'; ctx.fillText(b.on ? 'Sí' : 'No aplica', width - margin, y);
+          ctx.textAlign = 'left';
+        }
+        y += 28;
+      } else if (b.t === 'wrapped') {
+        setFont('700', 11, "'Raleway', sans-serif");
+        if (draw) { ctx.fillStyle = C.inkTxt; ctx.fillText(b.label.toUpperCase(), margin, y); }
+        y += 20;
+        setFont('400', 14.5, "'Raleway', sans-serif");
+        wrapCanvasText(ctx, b.text, contentW).forEach(line => {
+          if (draw) { ctx.fillStyle = C.ink; ctx.fillText(line, margin, y); }
+          y += 21;
+        });
+        y += 10;
+      } else if (b.t === 'total') {
+        y += 20;
+        setFont('700', 11, "'Raleway', sans-serif");
+        if (draw) { ctx.fillStyle = C.grey; ctx.fillText('ESTIMADO', margin, y); }
+        y += 40;
+        setFont('400', 46, "'Bebas Neue', sans-serif");
+        if (draw) { ctx.fillStyle = C.ink; ctx.fillText(b.value, margin, y); }
+        y += 20;
+      } else if (b.t === 'footnote') {
+        y += 14;
+        setFont('italic 400', 11.5, "'Raleway', sans-serif");
+        wrapCanvasText(ctx, b.text, contentW).forEach(line => {
+          if (draw) { ctx.fillStyle = C.lightGrey; ctx.fillText(line, margin, y); }
+          y += 16;
+        });
+      }
+    });
+
+    return y + margin;
+  }
+
+  function downloadQuoteImage(state, result, details) {
+    const blocks = buildQuoteBlocks(state, result, details);
+
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    const height = layoutQuoteBlocks(measureCtx, blocks, false);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = QUOTE_IMG.width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = QUOTE_IMG.colors.ground;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = QUOTE_IMG.colors.flare;
+    ctx.fillRect(0, 0, canvas.width, 10);
+    layoutQuoteBlocks(ctx, blocks, true);
+
+    const link = document.createElement('a');
+    link.download = 'cotizacion-camilo-creativo' + (details && details.nombre ? '-' + slugify(details.nombre) : '') + '.png';
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   const calcModal = document.getElementById('calcModal');
-  const calcOpenBtn = document.getElementById('calcOpenBtn');
   const calcExportBtn = document.getElementById('calcExportBtn');
   const calcWhatsappBtn = document.getElementById('calcWhatsappBtn');
   let calcLastFocused = null;
@@ -725,7 +913,7 @@
     calcModal.classList.add('is-open');
     calcModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    const first = calcModal.querySelector('#calcName, input, button');
+    const first = calcModal.querySelector('input, button');
     if (first) first.focus();
   }
 
@@ -737,7 +925,7 @@
     if (calcLastFocused && calcLastFocused.focus) calcLastFocused.focus();
   }
 
-  if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalcModal);
+  document.querySelectorAll('[data-calc-open]').forEach(btn => btn.addEventListener('click', openCalcModal));
   if (calcModal) {
     calcModal.querySelectorAll('input').forEach(el => {
       el.addEventListener('change', updateCalc);
@@ -748,22 +936,90 @@
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     generatePdf(calcCurrentState, calcCurrentResult);
   });
-  if (calcWhatsappBtn) calcWhatsappBtn.addEventListener('click', sendCalcWhatsapp);
+  if (calcWhatsappBtn) calcWhatsappBtn.addEventListener('click', () => {
+    if (!calcCurrentState || !calcCurrentResult) updateCalc();
+    closeCalcModal();
+    openDetailsModal();
+  });
   document.querySelectorAll('[data-close-calc]').forEach(el => el.addEventListener('click', closeCalcModal));
 
-  /* Escape y el atrapa-foco valen para el modal que esté abierto, sea el
-     de video o el de la calculadora — solo puede haber uno a la vez,
-     porque el fondo del que está abierto bloquea el clic al disparador
-     del otro. */
+  /* ---------- Modal de detalles del proyecto ----------
+     Se abre al pulsar "Enviar" en la calculadora. Mismo patrón de
+     apertura/cierre/foco que los otros dos modales. */
+  const detailsModal = document.getElementById('detailsModal');
+  const detailsConfirmBtn = document.getElementById('detailsConfirmBtn');
+  let detailsLastFocused = null;
+
+  function readDetailsState() {
+    const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const checked = name => !detailsModal ? [] : Array.from(detailsModal.querySelectorAll('input[name="' + name + '"]:checked'))
+      .map(el => (el.nextElementSibling ? el.nextElementSibling.textContent : el.value));
+    return {
+      nombre: val('detName'),
+      descripcion: val('detDescripcion'),
+      formato: checked('detFormato'),
+      estilo: checked('detEstilo'),
+      tono: checked('detTono'),
+      ritmo: checked('detRitmo'),
+      requerimientos: val('detRequerimientos')
+    };
+  }
+
+  function openDetailsModal() {
+    if (!detailsModal) return;
+    detailsLastFocused = document.activeElement;
+    detailsModal.classList.add('is-open');
+    detailsModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    const first = detailsModal.querySelector('input, textarea, button');
+    if (first) first.focus();
+  }
+
+  function closeDetailsModal() {
+    if (!detailsModal) return;
+    detailsModal.classList.remove('is-open');
+    detailsModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (detailsLastFocused && detailsLastFocused.focus) detailsLastFocused.focus();
+  }
+
+  /* El texto se manda ANTES de generar la imagen: window.open tiene que
+     quedar en la misma pila de llamadas del clic o el navegador lo trata
+     como pop-up no solicitado y lo bloquea. Dibujar el lienzo es
+     síncrono, así que no hay ningún await de por medio que rompa eso. */
+  function confirmAndSend() {
+    if (!calcCurrentState || !calcCurrentResult) updateCalc();
+    const details = readDetailsState();
+    const text = buildWhatsappText(calcCurrentState, calcCurrentResult, details);
+    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+    downloadQuoteImage(calcCurrentState, calcCurrentResult, details);
+    showToast('Descargué la imagen de tu cotización — adjúntala en el chat de WhatsApp que se acaba de abrir.');
+    closeDetailsModal();
+  }
+
+  if (detailsConfirmBtn) detailsConfirmBtn.addEventListener('click', confirmAndSend);
+  document.querySelectorAll('[data-close-details]').forEach(el => el.addEventListener('click', closeDetailsModal));
+
+  /* Escape y el atrapa-foco valen para el modal que esté abierto —video,
+     calculadora o detalles—: solo puede haber uno a la vez, porque el
+     fondo del que está abierto bloquea el clic al disparador de los
+     otros dos. */
+  const modalRegistry = [
+    { el: modal, close: closeModal },
+    { el: calcModal, close: closeCalcModal },
+    { el: detailsModal, close: closeDetailsModal }
+  ];
   function openModalEl() {
-    if (modal && modal.classList.contains('is-open')) return modal;
-    if (calcModal && calcModal.classList.contains('is-open')) return calcModal;
-    return null;
+    const found = modalRegistry.find(m => m.el && m.el.classList.contains('is-open'));
+    return found ? found.el : null;
   }
   document.addEventListener('keydown', e => {
     const open = openModalEl();
     if (!open) return;
-    if (e.key === 'Escape') { open === modal ? closeModal() : closeCalcModal(); }
+    if (e.key === 'Escape') {
+      const found = modalRegistry.find(m => m.el === open);
+      if (found) found.close();
+    }
     if (e.key === 'Tab') {
       const focusables = open.querySelectorAll('button, iframe, [href], input, select, textarea');
       if (!focusables.length) return;

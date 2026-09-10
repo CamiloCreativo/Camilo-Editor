@@ -256,6 +256,66 @@ h1, h2, h3, .bebas {
 .nav__toggle.is-open span:first-child { transform: translateY(4px) rotate(45deg); }
 .nav__toggle.is-open span:last-child { width: 26px; transform: translateY(-4px) rotate(-45deg); }
 
+/* Aviso sobre "Precios": CSS puro, sin :hover, para que se vea igual en
+   escritorio y en el cajón móvil (ahí no hay puntero que lo revele). Entra
+   con rebote y luego late cada tanto para llamar la atención. */
+.nav__item--tip { position: relative; display: inline-flex; }
+.nav__tip {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-top: 10px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 7px 14px;
+  background: var(--flare);
+  color: var(--tinta);
+  font-family: var(--font-cuerpo);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  box-shadow: 0 10px 24px -8px rgba(227, 100, 20, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: navTipIn 0.5s var(--ease-out) 1.6s both, navTipPulse 2.6s ease-in-out 2.4s infinite;
+}
+.nav__tip::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: -5px;
+  width: 10px; height: 10px;
+  background: var(--flare);
+  transform: translateX(-50%) rotate(45deg);
+}
+@keyframes navTipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.7); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes navTipPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50%      { transform: translateX(-50%) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav__tip { animation: navTipIn 0.01s linear both; }
+}
+/* En el cajón móvil el enlace queda en flujo vertical: el aviso se planta
+   debajo, sin la flecha ni el centrado absoluto que solo tienen sentido
+   en la barra horizontal de escritorio. */
+@media (max-width: 768px) {
+  .nav__item--tip { flex-direction: column; align-items: flex-start; }
+  .nav__tip {
+    position: static;
+    margin-top: 2px;
+    max-width: 220px;
+    white-space: normal;
+    animation: navTipFadeMobile 0.5s ease-out 1.6s both, navTipPulseMobile 2.6s ease-in-out 2.4s infinite;
+  }
+  .nav__tip::before { display: none; }
+  @keyframes navTipFadeMobile { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes navTipPulseMobile { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+}
+
 /* =========================================================
    REDES FLOTANTES
    Protagonistas a propósito — decisión de Camilo del
@@ -1204,10 +1264,11 @@ h1, h2, h3, .bebas {
   color: var(--ink);
 }
 
-/* Botón que abre la calculadora — mismo aspecto que .calc__export dentro
-   del modal, es el mismo tipo de acción (naranja: "esto se pulsa"). */
-.precios__calc-btn,
-.calc__export {
+/* Botón que abre la calculadora — la acción principal de la sección, así
+   que es el mismo naranja lleno ("esto se pulsa"). Vive dos veces en el
+   DOM (junto al título y al cierre de la sección): mismo botón, dos
+   disparadores, por eso .js usa [data-calc-open] y no un id. */
+.precios__calc-btn {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -1223,9 +1284,75 @@ h1, h2, h3, .bebas {
   transition: transform var(--t-med) var(--ease-out);
 }
 .precios__calc-btn { margin-top: clamp(22px, 3vw, 32px); }
-.precios__calc-btn:hover, .calc__export:hover { transform: translateY(-2px); }
-.precios__calc-btn:active, .calc__export:active { transform: translateY(0); }
+.precios__calc-btn:hover { transform: translateY(-2px); }
+.precios__calc-btn:active { transform: translateY(0); }
 .precios__calc-btn svg { width: 18px; height: 18px; }
+
+/* Título de Precios + el mismo botón de la calculadora, esta vez al lado
+   del titular en vez de solo al cierre de la sección. */
+.precios__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(14px, 2.2vw, 26px);
+  margin-bottom: clamp(20px, 3vw, 32px);
+}
+.precios__title-row .precios__title { margin-bottom: 0; }
+.precios__title-row .precios__calc-btn { margin-top: 0; }
+
+/* Descargar PDF pasó a ser la acción secundaria: quien de verdad convierte
+   es "Enviar" (WhatsApp), así que ahora lleva el tratamiento discreto que
+   antes tenía ese botón. */
+.calc__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 26px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-cuerpo);
+  font-weight: 700;
+  font-size: 0.94rem;
+  border: 1.6px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out);
+}
+.calc__export:hover { background: var(--ink); color: var(--ground); transform: translateY(-2px); }
+.calc__export:active { transform: translateY(0); }
+
+/* =========================================================
+   BOTONES "LLAMATIVOS" — la acción que de verdad convierte
+   (generar cotización, enviar por WhatsApp) lleva un brillo que la
+   cruza más un pulso de sombra continuo, como los botones de "seguir"
+   de redes sociales. Aparte de .precios__calc-btn/.calc__whatsapp para
+   poder sumarla a cualquier botón de conversión sin duplicar estilo.
+   ========================================================= */
+.btn-flashy {
+  position: relative;
+  overflow: hidden;
+  animation: flashyGlow 2.4s ease-in-out infinite;
+}
+.btn-flashy::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.65) 50%, transparent 60%);
+  transform: translateX(-120%);
+  animation: flashyShine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes flashyGlow {
+  0%, 100% { box-shadow: 0 10px 26px -10px rgba(227, 100, 20, 0.55); }
+  50%      { box-shadow: 0 12px 34px -8px rgba(227, 100, 20, 0.85), 0 0 0 7px rgba(227, 100, 20, 0.14); }
+}
+@keyframes flashyShine {
+  0%, 15%  { transform: translateX(-120%); }
+  55%, 100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-flashy, .btn-flashy::before { animation: none; }
+}
 
 /* =========================================================
    CALCULADORA — modal con formulario y estimado en vivo.
@@ -1248,12 +1375,14 @@ h1, h2, h3, .bebas {
   transform: scale(0.94) translateY(16px);
   transition: transform var(--t-med) var(--ease-out);
 }
-.calc-modal.is-open .calc__content { transform: scale(1) translateY(0); }
+.calc-modal.is-open .calc__content,
+.details-modal.is-open .calc__content { transform: scale(1) translateY(0); }
 
 /* Entrada en cascada de los campos, uno a uno — "muy smooth" no es solo el
    marco: por eso el contenido también entra con vida. Puro CSS: funciona
    igual sin GSAP, sin sumar una segunda coreografía en motion.js para tres
-   segundos de animación. */
+   segundos de animación. Selectores repetidos para .details-modal: es el
+   mismo patrón "muy smooth" del modal de detalles del proyecto. */
 @keyframes calcFieldIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1261,7 +1390,10 @@ h1, h2, h3, .bebas {
 .calc-modal.is-open .calc__field,
 .calc-modal.is-open .calc__result,
 .calc-modal.is-open .calc__disclaimer,
-.calc-modal.is-open .calc__actions {
+.calc-modal.is-open .calc__actions,
+.details-modal.is-open .details__hint,
+.details-modal.is-open .calc__field,
+.details-modal.is-open .calc__actions {
   animation: calcFieldIn 0.45s var(--ease-out) both;
 }
 .calc-modal.is-open .calc__field:nth-of-type(1) { animation-delay: 0.03s; }
@@ -1273,11 +1405,23 @@ h1, h2, h3, .bebas {
 .calc-modal.is-open .calc__result { animation-delay: 0.27s; }
 .calc-modal.is-open .calc__disclaimer { animation-delay: 0.30s; }
 .calc-modal.is-open .calc__actions { animation-delay: 0.33s; }
+.details-modal.is-open .details__hint { animation-delay: 0.03s; }
+.details-modal.is-open .calc__field:nth-of-type(1) { animation-delay: 0.06s; }
+.details-modal.is-open .calc__field:nth-of-type(2) { animation-delay: 0.09s; }
+.details-modal.is-open .calc__field:nth-of-type(3) { animation-delay: 0.12s; }
+.details-modal.is-open .calc__field:nth-of-type(4) { animation-delay: 0.15s; }
+.details-modal.is-open .calc__field:nth-of-type(5) { animation-delay: 0.18s; }
+.details-modal.is-open .calc__field:nth-of-type(6) { animation-delay: 0.21s; }
+.details-modal.is-open .calc__field:nth-of-type(7) { animation-delay: 0.24s; }
+.details-modal.is-open .calc__actions { animation-delay: 0.28s; }
 @media (prefers-reduced-motion: reduce) {
   .calc-modal.is-open .calc__field,
   .calc-modal.is-open .calc__result,
   .calc-modal.is-open .calc__disclaimer,
-  .calc-modal.is-open .calc__actions { animation: none; }
+  .calc-modal.is-open .calc__actions,
+  .details-modal.is-open .details__hint,
+  .details-modal.is-open .calc__field,
+  .details-modal.is-open .calc__actions { animation: none; }
 }
 
 /* El botón de cerrar del video flota ENCIMA de la caja porque esta es
@@ -1302,6 +1446,17 @@ h1, h2, h3, .bebas {
   font-size: clamp(1.8rem, 4vw, 2.4rem);
   color: var(--ink);
   margin: 0 0 clamp(20px, 3vw, 28px);
+}
+/* A diferencia de .calc__disclaimer (letra pequeña, discreta), este aviso
+   es parte del mensaje principal: dice que todo el formulario es
+   opcional, así que tiene que leerse sin esfuerzo. */
+.details__hint {
+  margin: 0 0 clamp(20px, 3vw, 28px);
+  padding: 12px 16px;
+  background: var(--ink-wash);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: var(--ink-txt);
 }
 .calc__field { margin-bottom: clamp(18px, 2.4vw, 26px); }
 .calc__label {
@@ -1348,6 +1503,11 @@ h1, h2, h3, .bebas {
   background: transparent;
 }
 .calc__number:focus-visible { outline: 2px solid var(--flare); outline-offset: 1px; }
+.calc__textarea { resize: vertical; min-height: 78px; line-height: 1.5; font-family: var(--font-cuerpo); }
+/* Gris claro con un ejemplo visible, nunca un valor precargado. --ink-txt
+   y no --ink-dim: ese último es solo para texto ≥24px (regla de contraste
+   del manual de marca) y un placeholder es texto normal. */
+.calc__number::placeholder { color: var(--ink-txt); opacity: 1; }
 
 .calc__checks { display: flex; flex-direction: column; gap: 10px; }
 .calc__checks label, .calc__check-solo {
@@ -1424,22 +1584,25 @@ h1, h2, h3, .bebas {
   gap: 12px;
   margin-top: clamp(20px, 3vw, 28px);
 }
+/* Es la acción que de verdad convierte —"Enviar" y "Confirmar y
+   enviar"—, así que pasó de contorno a naranja lleno con .btn-flashy: el
+   PDF (.calc__export) es el secundario ahora. */
 .calc__whatsapp {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 13px 26px;
-  background: transparent;
-  color: var(--ink);
+  background: var(--flare);
+  color: var(--tinta);
   font-family: var(--font-cuerpo);
   font-weight: 700;
   font-size: 0.94rem;
-  border: 1.6px solid var(--ink);
+  border: 0;
   border-radius: 999px;
   cursor: pointer;
-  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out);
+  transition: transform var(--t-med) var(--ease-out);
 }
-.calc__whatsapp:hover { background: var(--ink); color: var(--ground); transform: translateY(-2px); }
+.calc__whatsapp:hover { transform: translateY(-2px); }
 .calc__whatsapp:active { transform: translateY(0); }
 
 /* =========================================================

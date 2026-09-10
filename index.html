@@ -40,7 +40,12 @@
       <a href="#portafolio" class="nav__link">Trabajo</a>
       <a href="#personal" class="nav__link">Personal</a>
       <a href="#perfil" class="nav__link">Proceso</a>
-      <a href="#precios" class="nav__link">Precios</a>
+      <!-- El aviso es CSS puro (sin :hover) para que se vea igual en
+           escritorio y en el cajón móvil: ver Estructura del sitio. -->
+      <span class="nav__item--tip">
+        <a href="#precios" class="nav__link">Precios</a>
+        <span class="nav__tip" aria-hidden="true">Cotiza tu video acá</span>
+      </span>
       <a href="#contacto" class="nav__link">Contacto</a>
     </nav>
   </header>
@@ -250,7 +255,13 @@
          aplastar los números. -->
     <section id="precios" class="precios">
       <div class="precios__inner">
-        <h2 class="precios__title" data-split>Precios</h2>
+        <div class="precios__title-row">
+          <h2 class="precios__title" data-split>Precios</h2>
+          <button type="button" class="precios__calc-btn btn-flashy" data-calc-open id="calcOpenBtnTop">
+            Genera tu cotización
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19L19 5m0 0H8m11 0v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
 
         <p class="precios__lead">
           Cobro por pieza terminada, no por hora: sabes el precio antes de que
@@ -346,7 +357,7 @@
             <h3>Si te falta algo (USD)</h3>
             <p>Estos precios asumen que tú traes el material. Si necesitas que yo resuelva algo de esto, se suma al presupuesto:</p>
             <dl class="precios__list">
-              <div class="precios__row"><dt>Buscar y curar B-roll</dt><dd>$5–10 / min usado</dd></div>
+              <div class="precios__row"><dt>Buscar o limpiar B-roll</dt><dd>$5–10 / min usado</dd></div>
               <div class="precios__row"><dt>Elegir música con licencia</dt><dd>$10 / video</dd></div>
               <div class="precios__row"><dt>SFX fuera de mi librería</dt><dd>$5–15 / video</dd></div>
               <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$15–25 / video</dd></div>
@@ -366,8 +377,8 @@
 
         <p class="precios__closing">¿No sabes en qué nivel cae tu proyecto? Cuéntame qué tienes y te digo.</p>
 
-        <button type="button" class="precios__calc-btn" id="calcOpenBtn">
-          Calcula un estimado
+        <button type="button" class="precios__calc-btn btn-flashy" data-calc-open id="calcOpenBtn">
+          Genera tu cotización
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19L19 5m0 0H8m11 0v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
@@ -430,11 +441,6 @@
       <h3 id="calcTitle" class="calc__title">Calcula tu estimado</h3>
 
       <div class="calc__field">
-        <label class="calc__label" for="calcName">Tu nombre o el de tu marca (opcional)</label>
-        <input class="calc__number" type="text" id="calcName" maxlength="60" placeholder="Para personalizar tu cotización">
-      </div>
-
-      <div class="calc__field">
         <span class="calc__label">Nivel</span>
         <div class="calc__pills" role="radiogroup" aria-label="Nivel de edición">
           <label class="calc__pill"><input type="radio" name="calcTier" value="basico" checked><span>Básico</span></label>
@@ -454,7 +460,7 @@
       <div class="calc__field">
         <span class="calc__label">Si te falta algo</span>
         <div class="calc__checks">
-          <label><input type="checkbox" name="calcExtra" value="broll"><span>Buscar y curar B-roll</span></label>
+          <label><input type="checkbox" name="calcExtra" value="broll"><span>Buscar o limpiar B-roll</span></label>
           <label><input type="checkbox" name="calcExtra" value="musica"><span>Música con licencia</span></label>
           <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX fuera de mi librería</span></label>
           <label><input type="checkbox" name="calcExtra" value="locucion"><span>Locución o voz en off (IA)</span></label>
@@ -484,7 +490,84 @@
 
       <div class="calc__actions">
         <button type="button" class="calc__export" id="calcExportBtn">Descargar PDF</button>
-        <button type="button" class="calc__whatsapp" id="calcWhatsappBtn">Enviar por WhatsApp</button>
+        <button type="button" class="calc__whatsapp btn-flashy" id="calcWhatsappBtn">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL DE DETALLES DEL PROYECTO =====
+       Se abre al pulsar "Enviar" en la calculadora. Todo es opcional —
+       .details__hint lo deja explícito—: "Confirmar y enviar" funciona
+       igual sin llenar nada. El nombre vivía en la calculadora; se movió
+       aquí porque es un dato del PROYECTO, no del precio. -->
+  <div class="modal details-modal" id="detailsModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+    <div class="modal__backdrop" data-close-details></div>
+    <div class="modal__content calc__content">
+      <button class="modal__close" data-close-details aria-label="Cerrar detalles del proyecto">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      </button>
+
+      <h3 id="detailsTitle" class="calc__title">Cuéntame tu idea</h3>
+      <p class="details__hint">Todo esto es opcional: puedes enviarlo en blanco, pero entre más me cuentes, mejor entiendo tu idea antes de hablar.</p>
+
+      <div class="calc__field">
+        <label class="calc__label" for="detName">Nombre de la persona, marca o empresa</label>
+        <input class="calc__number" type="text" id="detName" maxlength="60" placeholder="Ej: Ana Pérez o Estudio Creativo XYZ">
+      </div>
+
+      <div class="calc__field">
+        <label class="calc__label" for="detDescripcion">Descripción del video</label>
+        <textarea class="calc__number calc__textarea" id="detDescripcion" rows="3" maxlength="600" placeholder="Ej: video para Instagram sobre el lanzamiento de mi producto, con testimonios de clientes"></textarea>
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Formato</span>
+        <div class="calc__pills" role="group" aria-label="Formato del video">
+          <label class="calc__pill"><input type="checkbox" name="detFormato" value="vertical"><span>Reel / Short vertical</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detFormato" value="horizontal"><span>Video horizontal (YouTube)</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detFormato" value="cuadrado"><span>Cuadrado (1:1)</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detFormato" value="multiple"><span>Varios formatos</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Estilo</span>
+        <div class="calc__pills" role="group" aria-label="Estilo del video">
+          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="dinamico"><span>Dinámico y rápido</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="cinematografico"><span>Cinematográfico</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="documental"><span>Documental / testimonial</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="minimalista"><span>Minimalista y limpio</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detEstilo" value="llamativo"><span>Llamativo / redes</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Tono</span>
+        <div class="calc__pills" role="group" aria-label="Tono del video">
+          <label class="calc__pill"><input type="checkbox" name="detTono" value="profesional"><span>Profesional</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detTono" value="cercano"><span>Cercano y casual</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detTono" value="divertido"><span>Divertido / humor</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detTono" value="inspirador"><span>Inspirador / emotivo</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detTono" value="serio"><span>Serio / formal</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <span class="calc__label">Ritmo</span>
+        <div class="calc__pills" role="group" aria-label="Ritmo del video">
+          <label class="calc__pill"><input type="checkbox" name="detRitmo" value="rapido"><span>Muy rápido, mucho corte</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detRitmo" value="medio"><span>Medio</span></label>
+          <label class="calc__pill"><input type="checkbox" name="detRitmo" value="pausado"><span>Pausado / contemplativo</span></label>
+        </div>
+      </div>
+
+      <div class="calc__field">
+        <label class="calc__label" for="detRequerimientos">Requerimientos específicos</label>
+        <textarea class="calc__number calc__textarea" id="detRequerimientos" rows="3" maxlength="600" placeholder="Ej: el logo debe aparecer en la esquina, evita transiciones bruscas, usa la música que te compartí"></textarea>
+      </div>
+
+      <div class="calc__actions">
+        <button type="button" class="calc__whatsapp btn-flashy" id="detailsConfirmBtn">Confirmar y enviar</button>
       </div>
     </div>
   </div>
