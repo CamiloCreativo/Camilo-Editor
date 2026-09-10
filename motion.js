@@ -20,6 +20,7 @@
   gsap.registerPlugin(ScrollTrigger);
   if (window.Flip) gsap.registerPlugin(Flip);
   if (window.SplitText) gsap.registerPlugin(SplitText);
+  if (window.ScrollToPlugin) gsap.registerPlugin(ScrollToPlugin);
 
   const deck = document.getElementById('workDeck');
   const stage = document.getElementById('workStage');
@@ -621,6 +622,33 @@
   }
 
   /* =======================================================
+     SCROLL SUAVE A ANCLAS — reemplaza scroll-behavior:smooth (CSS).
+     GSAP mismo lo advierte: scroll-behavior:smooth del navegador y
+     ScrollTrigger con pines pelean por la misma posición de scroll. El
+     síntoma real fue un clic en "Precios" de la nav que apenas se movía
+     unos píxeles y se quedaba ahí, en vez de llegar a la sección. Con
+     ScrollToPlugin, GSAP hace el scroll Y sabe convivir con los pines.
+     Sin este archivo (CDN caído, JS bloqueado), el CSS ya no trae
+     scroll-behavior:smooth: el salto queda instantáneo pero exacto. */
+  function anchors() {
+    if (!window.ScrollToPlugin) return;
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      const id = a.getAttribute('href').slice(1);
+      if (!id) return;
+      const target = document.getElementById(id);
+      if (!target) return;
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        gsap.to(window, {
+          duration: 1, ease: 'power3.inOut',
+          scrollTo: { y: target, autoKill: true },
+          overwrite: 'auto'
+        });
+      });
+    });
+  }
+
+  /* =======================================================
      ARRANQUE
      ======================================================= */
   function boot() {
@@ -633,6 +661,7 @@
     social();
     contact();
     wireFlip();
+    anchors();
 
     const mm = gsap.matchMedia();
     mm.add('(min-width: 769px)', () => {
@@ -661,6 +690,32 @@
       img.addEventListener('load', settle, { once: true });
       img.addEventListener('error', settle, { once: true });
     });
+
+    /* Lo de arriba solo cubre <img>. El embed de TikTok en Marca personal
+       llega tarde (a propósito, es perezoso) y cuando carga cambia de
+       tamaño por su cuenta, sin disparar ningún evento que script.js
+       pueda escuchar — es un iframe de otro origen. Sin recalcular ahí,
+       .proc y todo lo que va después (Precios, Contacto) quedan pineados
+       sobre una altura que ya no es la real: un clic en "Precios" en la
+       nav aterriza en Portafolio o en Personal, no en Precios. Un
+       ResizeObserver sobre <main> agarra CUALQUIER cambio de alto —el del
+       TikTok incluido, y cualquier otro que aparezca a futuro— sin tener
+       que saber la causa. */
+    let resizeObsRt;
+    let resizeObsFirst = true;
+    const mainEl = document.querySelector('main');
+    if (mainEl && window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        // El propio observe() dispara una primera llamada con el alto que
+        // ScrollTrigger.create() ya midió bien: refrescar ahí es ruido, y
+        // si coincide con un clic de nav en curso, puede cortarle el scroll
+        // suave a mitad de camino.
+        if (resizeObsFirst) { resizeObsFirst = false; return; }
+        clearTimeout(resizeObsRt);
+        resizeObsRt = setTimeout(() => ScrollTrigger.refresh(), 260);
+      });
+      ro.observe(mainEl);
+    }
 
     let rt;
     window.addEventListener('resize', () => {

@@ -79,7 +79,15 @@ body::after {
 }
 
 html {
-  scroll-behavior: smooth;
+  /* NO scroll-behavior:smooth aquí. GSAP lo advierte en su propia
+     documentación: mezclar el scroll suave nativo del navegador con
+     secciones fijadas (ScrollTrigger pin) hace que la animación del
+     navegador y el recálculo de GSAP peleen por la misma posición de
+     scroll — un clic en la nav podía moverse unos pocos píxeles y
+     detenerse ahí, en vez de llegar a la sección real. motion.js hace el
+     scroll suave con GSAP (ScrollToPlugin), que sí sabe convivir con los
+     pines; sin GSAP, el salto queda instantáneo pero exacto — mejor eso
+     que "suave pero roto". -->
   -webkit-text-size-adjust: 100%;
 }
 
@@ -1778,9 +1786,7 @@ h1, h2, h3, .bebas {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
   }
-  html { scroll-behavior: auto; }
   .intro { display: none !important; }
   .ticker__row { transform: none !important; }
 }

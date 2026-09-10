@@ -795,6 +795,36 @@
     });
   }
 
+  /* ---------- Embed de TikTok, perezoso ----------
+     Antes `embed.js` se cargaba siempre desde el HTML, así lo viera o no
+     quien entra. Se pide solo cuando Marca personal está a punto de
+     entrar en pantalla: menos peticiones a TikTok en cada carga, que es
+     justo lo que puede disparar su propia protección "overload-protect"
+     cuando hay demasiadas de golpe. Sin IntersectionObserver (navegador
+     muy viejo) se carga de una: sin JS el enlace real del blockquote
+     sigue funcionando igual, así que no hay nada que degradar de más. */
+  const personalSection = document.getElementById('personal');
+  if (personalSection && personalSection.querySelector('.tiktok-embed')) {
+    const loadTiktokEmbed = () => {
+      if (document.querySelector('script[data-tiktok-embed]')) return;
+      const s = document.createElement('script');
+      s.src = 'https://www.tiktok.com/embed.js';
+      s.async = true;
+      s.dataset.tiktokEmbed = 'true';
+      document.body.appendChild(s);
+    };
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) { loadTiktokEmbed(); io.disconnect(); }
+        });
+      }, { rootMargin: '600px 0px' });
+      io.observe(personalSection);
+    } else {
+      loadTiktokEmbed();
+    }
+  }
+
   /* ---------- Toast ---------- */
   let toastTimer;
   function showToast(message) {
