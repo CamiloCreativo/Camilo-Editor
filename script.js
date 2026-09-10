@@ -595,7 +595,9 @@
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
     const mx = 56;
+    const bottomMargin = 50;
     let y = 0;
 
     function textRight(txt, yy) {
@@ -605,6 +607,17 @@
       doc.setDrawColor(224, 224, 224);
       doc.setLineWidth(1);
       doc.line(mx, yy, pageW - mx, yy);
+    }
+    /* Con la sección PROYECTO el contenido ya no cabe siempre en una sola
+       página A4 — antes se seguía dibujando fuera del área visible y el
+       PDF salía cortado. ensureSpace() mide antes de cada bloque (nunca
+       parte una fila de extras ni una etiqueta de su primera línea) y
+       abre página nueva si no alcanza. */
+    function ensureSpace(needed) {
+      if (y + needed > pageH - bottomMargin) {
+        doc.addPage();
+        y = 56;
+      }
     }
 
     doc.setFillColor(227, 100, 20);
@@ -635,6 +648,7 @@
     doc.text('Duración', mx, y);
     doc.setFont('helvetica', 'bold'); textRight(formatDuration(state), y);
 
+    ensureSpace(26 + 22 + PRICING.extras.length * 20);
     y += 26;
     divider(y);
     y += 22;
@@ -650,6 +664,7 @@
       textRight(on ? 'Sí' : 'No aplica', y);
     });
 
+    ensureSpace(26 + 22 + 40);
     y += 26;
     divider(y);
     y += 22;
@@ -668,6 +683,7 @@
     textRight(mcOn ? 'Sí' : 'No aplica', y);
 
     if (details) {
+      ensureSpace(26 + 22 + 20);
       y += 26;
       divider(y);
       y += 22;
@@ -680,12 +696,15 @@
       doc.setFont('helvetica', 'bold'); textRight(details.nombre || 'No especificado', y);
 
       const addWrapped = (label, text) => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+        const lines = doc.splitTextToSize(text, pageW - mx * 2);
+        ensureSpace(22 + 14 + lines.length * 14);
         y += 22;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 51, 102);
         doc.text(label.toUpperCase(), mx, y);
         y += 14;
         doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0, 51, 102);
-        doc.splitTextToSize(text, pageW - mx * 2).forEach(line => {
+        lines.forEach(line => {
           doc.text(line, mx, y);
           y += 14;
         });
@@ -698,6 +717,7 @@
       addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
     }
 
+    ensureSpace(44 + 33 + 24);
     y += 44;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(135, 135, 135);
     doc.text('ESTIMADO', mx, y);
@@ -719,197 +739,11 @@
   }
 
   /* El texto de WhatsApp es deliberadamente corto: el detalle completo
-     (nivel, duración, extras, proyecto) ya va en la imagen que se
-     adjunta a mano — repetirlo en el texto era ruido antes de que
-     Camilo alcance a abrir la imagen. Esto solo abre la conversación. */
+     —nivel, duración, extras, proyecto— ya va en el PDF descargado.
+     Esto solo abre la conversación. */
   function buildSimpleWhatsappText(details) {
     const nombre = details && details.nombre;
     return 'Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : '') + ' Aquí tienes mi cotización, ¿hablamos?';
-  }
-
-  /* ---------- Imagen de la cotización, para compartir por WhatsApp ----------
-     Esta imagen NUNCA se descarga — es interna, solo existe para viajar
-     junto al mensaje de WhatsApp. Se arma como un archivo en memoria
-     (File) y se entrega a la Web Share API (navigator.share), que abre
-     el selector nativo del sistema para elegir WhatsApp y manda la
-     imagen y el texto juntos en un solo envío, sin pasos manuales.
-
-     layoutQuoteBlocks recorre la MISMA lista de bloques dos veces: una
-     sin dibujar (solo para sumar el alto real y poder dimensionar el
-     lienzo antes de crearlo) y otra dibujando de verdad. Una sola
-     función de layout evita mantener la posición de cada línea por
-     partida doble. */
-  const QUOTE_IMG = {
-    width: 960,
-    margin: 56,
-    colors: { ink: '#003366', inkTxt: 'rgba(0,51,102,0.72)', earth: '#5A3E2B', flare: '#E36414', ground: '#F5F5F5', grey: '#878787', lightGrey: '#B2B2B2' }
-  };
-
-  function wrapCanvasText(ctx, text, maxWidth) {
-    const words = String(text).split(/\s+/);
-    const lines = [];
-    let line = '';
-    words.forEach(word => {
-      const test = line ? line + ' ' + word : word;
-      if (line && ctx.measureText(test).width > maxWidth) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = test;
-      }
-    });
-    if (line) lines.push(line);
-    return lines;
-  }
-
-  function buildQuoteBlocks(state, result, details) {
-    const blocks = [
-      { t: 'brand' },
-      { t: 'title', text: 'COTIZACIÓN DE EDICIÓN DE VIDEO' },
-      { t: 'date', text: new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) },
-      { t: 'divider' },
-      { t: 'kv', label: 'Nivel', value: PRICING.tiers[state.tier].label },
-      { t: 'kv', label: 'Duración', value: formatDuration(state) },
-      { t: 'divider' },
-      { t: 'section', text: 'EXTRAS' }
-    ];
-    PRICING.extras.forEach(ex => blocks.push({ t: 'status', label: ex.label, on: state.extras.indexOf(ex.id) !== -1 }));
-    blocks.push(
-      { t: 'divider' },
-      { t: 'section', text: 'RECARGOS' },
-      { t: 'kv', label: 'Resolución de entrega', value: PRICING.resolucion[state.resolucion].label },
-      { t: 'status', label: PRICING.multicamLabel, on: state.multicam }
-    );
-
-    if (details) {
-      blocks.push(
-        { t: 'divider' },
-        { t: 'section', text: 'PROYECTO' },
-        { t: 'kv', label: 'Para', value: details.nombre || 'No especificado' },
-        { t: 'wrapped', label: 'Descripción', text: details.descripcion || 'No especificada' },
-        { t: 'wrapped', label: 'Formato', text: details.formato.length ? details.formato.join(', ') : 'No especificado' },
-        { t: 'wrapped', label: 'Estilo', text: details.estilo.length ? details.estilo.join(', ') : 'No especificado' },
-        { t: 'wrapped', label: 'Tono', text: details.tono.length ? details.tono.join(', ') : 'No especificado' },
-        { t: 'wrapped', label: 'Ritmo', text: details.ritmo.length ? details.ritmo.join(', ') : 'No especificado' },
-        { t: 'wrapped', label: 'Requerimientos específicos', text: details.requerimientos || 'Ninguno' }
-      );
-    }
-
-    blocks.push(
-      { t: 'total', value: '$' + result.total + ' USD' },
-      { t: 'footnote', text: 'No es una cotización cerrada: el número final puede variar según el detalle del proyecto.' }
-    );
-    return blocks;
-  }
-
-  function layoutQuoteBlocks(ctx, blocks, draw) {
-    const { width, margin, colors: C } = QUOTE_IMG;
-    const contentW = width - margin * 2;
-    let y = 70;
-    const setFont = (weight, size, family) => { ctx.font = (weight ? weight + ' ' : '') + size + 'px ' + family; };
-
-    blocks.forEach(b => {
-      if (b.t === 'brand') {
-        setFont('700', 15, "'Raleway', sans-serif");
-        if (draw) { ctx.fillStyle = C.flare; ctx.fillText('CAMILO CREATIVO', margin, y); }
-        y += 34;
-      } else if (b.t === 'title') {
-        setFont('400', 34, "'Bebas Neue', sans-serif");
-        if (draw) { ctx.fillStyle = C.ink; ctx.fillText(b.text, margin, y); }
-        y += 20;
-      } else if (b.t === 'date') {
-        setFont('400', 13, "'Raleway', sans-serif");
-        if (draw) { ctx.fillStyle = C.grey; ctx.fillText(b.text, margin, y); }
-        y += 26;
-      } else if (b.t === 'divider') {
-        y += 12;
-        if (draw) { ctx.strokeStyle = 'rgba(0,51,102,0.16)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(width - margin, y); ctx.stroke(); }
-        y += 26;
-      } else if (b.t === 'section') {
-        setFont('700', 12, "'Raleway', sans-serif");
-        if (draw) { ctx.fillStyle = C.earth; ctx.fillText(b.text, margin, y); }
-        y += 26;
-      } else if (b.t === 'kv') {
-        setFont('400', 15, "'Raleway', sans-serif");
-        if (draw) {
-          ctx.fillStyle = C.ink; ctx.textAlign = 'left'; ctx.fillText(b.label, margin, y);
-          ctx.font = "700 15px 'Raleway', sans-serif";
-          ctx.textAlign = 'right'; ctx.fillText(b.value, width - margin, y);
-          ctx.textAlign = 'left';
-        }
-        y += 30;
-      } else if (b.t === 'status') {
-        setFont('400', 15, "'Raleway', sans-serif");
-        if (draw) {
-          ctx.fillStyle = b.on ? C.ink : C.lightGrey;
-          ctx.textAlign = 'left'; ctx.fillText(b.label, margin, y);
-          ctx.textAlign = 'right'; ctx.fillText(b.on ? 'Sí' : 'No aplica', width - margin, y);
-          ctx.textAlign = 'left';
-        }
-        y += 28;
-      } else if (b.t === 'wrapped') {
-        setFont('700', 11, "'Raleway', sans-serif");
-        if (draw) { ctx.fillStyle = C.inkTxt; ctx.fillText(b.label.toUpperCase(), margin, y); }
-        y += 20;
-        setFont('400', 14.5, "'Raleway', sans-serif");
-        wrapCanvasText(ctx, b.text, contentW).forEach(line => {
-          if (draw) { ctx.fillStyle = C.ink; ctx.fillText(line, margin, y); }
-          y += 21;
-        });
-        y += 10;
-      } else if (b.t === 'total') {
-        y += 20;
-        setFont('700', 11, "'Raleway', sans-serif");
-        if (draw) { ctx.fillStyle = C.grey; ctx.fillText('ESTIMADO', margin, y); }
-        y += 40;
-        setFont('400', 46, "'Bebas Neue', sans-serif");
-        if (draw) { ctx.fillStyle = C.ink; ctx.fillText(b.value, margin, y); }
-        y += 20;
-      } else if (b.t === 'footnote') {
-        y += 14;
-        setFont('italic 400', 11.5, "'Raleway', sans-serif");
-        wrapCanvasText(ctx, b.text, contentW).forEach(line => {
-          if (draw) { ctx.fillStyle = C.lightGrey; ctx.fillText(line, margin, y); }
-          y += 16;
-        });
-      }
-    });
-
-    return y + margin;
-  }
-
-  /* Sin promesas ni fetch(dataURL): navigator.share() solo funciona
-     dentro de la ventana breve de "gesto del usuario" que abrió el
-     clic, y cualquier await de por medio arriesga perderla. atob() es
-     síncrono, así que el archivo queda listo en el mismo tick. */
-  function dataUrlToBlob(dataUrl) {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/:(.*?);/)[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
-  }
-
-  function buildQuoteImageFile(state, result, details) {
-    const blocks = buildQuoteBlocks(state, result, details);
-
-    const measureCtx = document.createElement('canvas').getContext('2d');
-    const height = layoutQuoteBlocks(measureCtx, blocks, false);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = QUOTE_IMG.width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = QUOTE_IMG.colors.ground;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = QUOTE_IMG.colors.flare;
-    ctx.fillRect(0, 0, canvas.width, 10);
-    layoutQuoteBlocks(ctx, blocks, true);
-
-    const blob = dataUrlToBlob(canvas.toDataURL('image/png'));
-    const filename = 'cotizacion-camilo-creativo' + (details && details.nombre ? '-' + slugify(details.nombre) : '') + '.png';
-    return new File([blob], filename, { type: 'image/png' });
   }
 
   const calcModal = document.getElementById('calcModal');
@@ -994,35 +828,25 @@
     if (detailsLastFocused && detailsLastFocused.focus) detailsLastFocused.focus();
   }
 
-  /* El PDF es el único archivo que se descarga —con la sección PROYECTO
-     incluida—. La imagen nunca toca el disco: se arma en memoria y se
-     entrega a la Web Share API junto con el texto, en un solo envío,
-     para que WhatsApp la reciba como quien adjunta una foto a mano.
-
-     Todo esto es síncrono (jsPDF, Canvas, atob) a propósito: tanto
-     navigator.share() como el window.open() de respaldo necesitan
-     ocurrir dentro del mismo gesto del clic; un await de por medio
-     puede perder esa ventana y el navegador los bloquea. */
+  /* Se probó la Web Share API para mandar una imagen directo a WhatsApp
+     y se descartó: el selector nativo del sistema (elegir la app) es
+     obligatorio en esa API — ningún navegador permite saltárselo, es la
+     misma protección que impide que cualquier página empuje archivos a
+     otra app sin que la persona lo vea y lo confirme—. Camilo lo probó
+     y no lo quiso: pidió ir derecho a WhatsApp, sin pantallas de por
+     medio. `wa.me` sí hace eso —abre la conversación directo, sin
+     selector—, a cambio de no poder adjuntar el PDF solo: por eso el
+     PDF se descarga aparte, con toda la información (incluida la
+     sección PROYECTO), para adjuntarlo a mano si se quiere que Camilo
+     lo vea completo. */
   function confirmAndSend() {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     const details = readDetailsState();
     const text = buildSimpleWhatsappText(details);
 
     generatePdf(calcCurrentState, calcCurrentResult, details);
-
-    const imageFile = buildQuoteImageFile(calcCurrentState, calcCurrentResult, details);
-    const canShareImage = !!(navigator.canShare && navigator.canShare({ files: [imageFile] }));
-
-    if (canShareImage) {
-      navigator.share({ files: [imageFile], text }).catch(() => {});
-      showToast('Descargué tu PDF — la imagen de la cotización se comparte junto con tu mensaje de WhatsApp.');
-    } else {
-      /* Sin soporte para compartir archivos (la mayoría de escritorio):
-         la imagen no se descarga —pedido explícito—, así que aquí solo
-         viaja el texto corto. */
-      window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
-      showToast('Descargué tu PDF. Tu navegador no admite enviar la imagen junto al mensaje, así que te abrí WhatsApp solo con el texto.');
-    }
+    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+    showToast('Descargué tu cotización en PDF y te abrí WhatsApp — adjunta el PDF en el chat si quieres que Camilo vea todo el detalle.');
 
     closeDetailsModal();
   }
