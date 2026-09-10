@@ -308,7 +308,7 @@
               </tr>
               <tr>
                 <th scope="row">Zooms y reencuadres</th>
-                <td>—</td><td>Sí</td><td>Sí</td>
+                <td>Sencillos</td><td>Con reencuadre</td><td>Curvas suaves y variables</td>
               </tr>
               <tr>
                 <th scope="row">Subtítulos</th>
@@ -386,7 +386,7 @@
             <dl class="precios__list">
               <div class="precios__row"><dt>Buscar o limpiar B-roll</dt><dd>$5–10 / min usado</dd></div>
               <div class="precios__row"><dt>Elegir música con licencia</dt><dd>$10 / video</dd></div>
-              <div class="precios__row"><dt>SFX (efectos de sonido) fuera de mi librería</dt><dd>$5–15 / video</dd></div>
+              <div class="precios__row"><dt>SFX (efectos de sonido)</dt><dd>$5–15 / video</dd></div>
               <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$15–25 / video</dd></div>
               <div class="precios__row"><dt>Miniatura</dt><dd>$10–15</dd></div>
             </dl>
@@ -399,6 +399,7 @@
               <div class="precios__row"><dt>Entrega en 2160p / 4K</dt><dd>+25%</dd></div>
               <div class="precios__row"><dt>Sincronizar 2+ cámaras</dt><dd>+15–20%</dd></div>
               <div class="precios__row"><dt>Ronda de revisión adicional</dt><dd>+15% / ronda</dd></div>
+              <div class="precios__row"><dt>Entrega urgente (mitad del plazo estimado)</dt><dd>+50%</dd></div>
             </dl>
           </div>
         </div>
@@ -490,7 +491,7 @@
         <div class="calc__checks">
           <label><input type="checkbox" name="calcExtra" value="broll"><span>Buscar o limpiar B-roll</span></label>
           <label><input type="checkbox" name="calcExtra" value="musica"><span>Música con licencia</span></label>
-          <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX (efectos de sonido) fuera de mi librería</span></label>
+          <label><input type="checkbox" name="calcExtra" value="sfx"><span>SFX (efectos de sonido)</span></label>
           <label><input type="checkbox" name="calcExtra" value="locucion"><span>Locución o voz en off (IA)</span></label>
           <label><input type="checkbox" name="calcExtra" value="miniatura"><span>Miniatura</span></label>
         </div>
@@ -510,6 +511,10 @@
       </div>
 
       <div class="calc__field">
+        <label class="calc__check-solo"><input type="checkbox" id="calcUrgente"><span>Entrega urgente (mitad del plazo estimado)</span></label>
+      </div>
+
+      <div class="calc__field">
         <label class="calc__label" for="calcRevisiones">Rondas de revisión extra</label>
         <p class="calc__field-hint">Cada pieza ya trae 1 ronda en Básico y 2 en Medio/Pro. Cada ronda de más suma 15% al precio.</p>
         <input class="calc__number calc__number--sm" type="number" id="calcRevisiones" min="0" max="5" step="1" value="0" inputmode="numeric">
@@ -518,7 +523,7 @@
       <div class="calc__result">
         <span class="calc__result-label">Estimado</span>
         <strong class="calc__result-value">$<span id="calcTotal">15</span><span class="calc__result-currency"> USD</span></strong>
-        <p class="calc__result-note">Entrega estimada: <strong id="calcPlazo">1–3 días</strong></p>
+        <p class="calc__result-note">Entrega estimada: <strong id="calcPlazo">1–3 días hábiles</strong></p>
         <p class="calc__result-note" id="calcLongNote" hidden>Para más de 20 minutos, mejor escríbeme directamente y lo afinamos.</p>
       </div>
       <p class="calc__disclaimer">No es una cotización cerrada — el número final puede variar según el detalle del proyecto.</p>

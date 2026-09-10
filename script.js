@@ -468,7 +468,7 @@
     extras: [
       { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'perMin', rate: 7.5 },    // $5–10/min, punto medio
       { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
-      { id: 'sfx', label: 'SFX (efectos de sonido) fuera de mi librería', kind: 'flat', amount: 10 }, // $5–15, punto medio
+      { id: 'sfx', label: 'SFX (efectos de sonido)', kind: 'flat', amount: 10 }, // $5–15, punto medio
       { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio
       { id: 'miniatura', label: 'Miniatura', kind: 'flat', amount: 12 }    // $10–15, punto medio
     ],
@@ -480,49 +480,59 @@
     multicamLabel: 'Sincronizar 2+ cámaras',
     multicamPct: 0.18, // +15–20%, punto medio
     revisionExtraPct: 0.15, // por ronda extra, sobre el precio de la pieza — Tarifas.md
+    rushLabel: 'Entrega urgente (mitad del plazo estimado)',
+    rushPct: 0.5, // propuesto por el asistente — a propósito alto, Camilo no quiere fomentar pedirlo
     /* Referencia real de Camilo, un solo punto por nivel a 1 min: Básico
-       1–3 días, Medio 2–4, Pro 4–5. El resto de tramos (2–5, 5–10, 10–15,
-       15–20 min) es criterio del asistente extendiendo esa referencia —
-       igual que ya pasó con los `points` de precio — sin calibrar contra
-       tiempo real todavía. Por tramo, no interpolado: un plazo no se
-       promedia entre minutos como un precio. */
+       1–3 días, Medio 2–4, Pro 4–5 (confirmado como días hábiles,
+       lunes a viernes). El resto de tramos (2–5, 5–10, 10–15, 15–20 min)
+       es criterio del asistente extendiendo esa referencia — igual que
+       ya pasó con los `points` de precio — sin calibrar contra tiempo
+       real todavía. Por tramo, no interpolado: un plazo no se promedia
+       entre minutos como un precio. Días en números (no una etiqueta ya
+       armada) para poder calcular la mitad cuando se pide entrega
+       urgente. */
     plazos: {
       basico: [
-        { max: 2, label: '1–3 días' },
-        { max: 5, label: '2–4 días' },
-        { max: 10, label: '3–5 días' },
-        { max: 15, label: '4–6 días' },
-        { max: 20, label: '5–7 días' }
+        { max: 2, minDays: 1, maxDays: 3 },
+        { max: 5, minDays: 2, maxDays: 4 },
+        { max: 10, minDays: 3, maxDays: 5 },
+        { max: 15, minDays: 4, maxDays: 6 },
+        { max: 20, minDays: 5, maxDays: 7 }
       ],
       medio: [
-        { max: 2, label: '2–4 días' },
-        { max: 5, label: '3–5 días' },
-        { max: 10, label: '4–6 días' },
-        { max: 15, label: '5–7 días' },
-        { max: 20, label: '6–8 días' }
+        { max: 2, minDays: 2, maxDays: 4 },
+        { max: 5, minDays: 3, maxDays: 5 },
+        { max: 10, minDays: 4, maxDays: 6 },
+        { max: 15, minDays: 5, maxDays: 7 },
+        { max: 20, minDays: 6, maxDays: 8 }
       ],
       pro: [
-        { max: 2, label: '4–5 días' },
-        { max: 5, label: '5–7 días' },
-        { max: 10, label: '7–9 días' },
-        { max: 15, label: '9–11 días' },
-        { max: 20, label: '11–13 días' }
+        { max: 2, minDays: 4, maxDays: 5 },
+        { max: 5, minDays: 5, maxDays: 7 },
+        { max: 10, minDays: 7, maxDays: 9 },
+        { max: 15, minDays: 9, maxDays: 11 },
+        { max: 20, minDays: 11, maxDays: 13 }
       ]
     }
   };
+
+  function formatPlazo(minDays, maxDays) {
+    return (minDays === maxDays ? minDays : minDays + '–' + maxDays) + ' días hábiles';
+  }
 
   /* Por debajo del primer tramo el plazo es plano, igual que el precio
      (priceForDuration): un video de 20 segundos no se entrega más rápido
      que uno de 1–2 min. Por encima del último tramo (20 min) devuelve el
      tramo más largo — el aviso `calcLongNote` ya redirige a escribir
-     directo para esos casos. */
-  function plazoForDuration(tierKey, minutes) {
+     directo para esos casos. Con `urgent`, la mitad de cada extremo
+     (redondeando hacia arriba, nunca menos de 1 día) — la entrega
+     urgente reduce el plazo, nunca lo garantiza en menos de un día. */
+  function plazoForDuration(tierKey, minutes, urgent) {
     const tramos = PRICING.plazos[tierKey];
     const m = Math.max(0, minutes);
-    for (let i = 0; i < tramos.length; i++) {
-      if (m <= tramos[i].max) return tramos[i].label;
-    }
-    return tramos[tramos.length - 1].label;
+    const tramo = tramos.find(t => m <= t.max) || tramos[tramos.length - 1];
+    if (!urgent) return formatPlazo(tramo.minDays, tramo.maxDays);
+    return formatPlazo(Math.max(1, Math.ceil(tramo.minDays / 2)), Math.max(1, Math.ceil(tramo.maxDays / 2))) + ' (urgente)';
   }
 
   /* Interpolación lineal por tramos entre los puntos (minuto, precio) de
@@ -563,7 +573,9 @@
     const multicam = !!(multicamEl && multicamEl.checked);
     const revInput = document.getElementById('calcRevisiones');
     const extraRevisions = revInput ? Math.min(5, Math.max(0, Number(revInput.value) || 0)) : 0;
-    return { tier, min, sec, minutes, resolucion, extras, multicam, extraRevisions };
+    const urgenteEl = document.getElementById('calcUrgente');
+    const urgente = !!(urgenteEl && urgenteEl.checked);
+    return { tier, min, sec, minutes, resolucion, extras, multicam, extraRevisions, urgente };
   }
 
   function computeEstimate(state) {
@@ -578,8 +590,9 @@
     let pct = PRICING.resolucion[state.resolucion] ? PRICING.resolucion[state.resolucion].pct : 0;
     if (state.multicam) pct += PRICING.multicamPct;
     pct += PRICING.revisionExtraPct * state.extraRevisions;
+    if (state.urgente) pct += PRICING.rushPct;
     const total = subtotal * (1 + pct);
-    const plazo = plazoForDuration(state.tier, state.minutes);
+    const plazo = plazoForDuration(state.tier, state.minutes, state.urgente);
     return { base, extrasTotal, pct, total: Math.ceil(total), plazo };
   }
 
@@ -591,6 +604,26 @@
 
   let calcCurrentState = null;
   let calcCurrentResult = null;
+  let currentQuoteNumber = null;
+
+  /* Un número por sesión de calculadora (se genera al abrir el modal),
+     no por documento: así el PDF y la imagen que salen de la misma
+     apertura comparten referencia, aunque se descarguen en momentos
+     distintos. Fecha + 4 caracteres al azar alcanza para diferenciar
+     cotizaciones sin backend ni contador persistente — no hace falta que
+     sea único a nivel mundial, solo que sirva de referencia entre Camilo
+     y quien cotizó. Alfabeto sin 0/O ni 1/I para que no se confundan al
+     leerlo en voz alta. */
+  function generateQuoteNumber() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let suffix = '';
+    for (let i = 0; i < 4; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+    return 'COT-' + y + m + day + '-' + suffix;
+  }
 
   /* Cuenta hacia el nuevo total en vez de saltar de golpe — el mismo
      principio "muy smooth" del modal, aplicado al número. Sin GSAP a
@@ -686,7 +719,13 @@
 
       y += S(17);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(S(9.5)); doc.setTextColor(135, 135, 135);
-      put(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), y);
+      const today = new Date();
+      put(today.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), y);
+      if (currentQuoteNumber) textRight(currentQuoteNumber, y);
+
+      y += S(14);
+      doc.setFontSize(S(8.5));
+      put('Válida hasta el ' + formatValidUntil(today), y);
 
       y += S(20);
       divider(y);
@@ -737,6 +776,12 @@
       doc.setTextColor(mcOn ? 0 : 178, mcOn ? 51 : 178, mcOn ? 102 : 178);
       put(PRICING.multicamLabel, y);
       textRight(mcOn ? 'Sí' : 'No aplica', y);
+
+      y += S(20);
+      const rushOn = state.urgente;
+      doc.setTextColor(rushOn ? 0 : 178, rushOn ? 51 : 178, rushOn ? 102 : 178);
+      put(PRICING.rushLabel, y);
+      textRight(rushOn ? ('Sí (+' + Math.round(PRICING.rushPct * 100) + '%)') : 'No aplica', y);
 
       y += S(20);
       const revIncluded = PRICING.tiers[state.tier].revisions;
@@ -795,6 +840,9 @@
       doc.setFont('helvetica', 'italic'); doc.setFontSize(S(8)); doc.setTextColor(165, 165, 165);
       put('No es una cotizacion cerrada: el numero final puede variar segun el detalle del proyecto.', y);
 
+      y += S(12);
+      put('Cambios de alcance respecto a lo descrito aqui pueden requerir una nueva cotizacion.', y);
+
       return y;
     }
 
@@ -812,6 +860,15 @@
      detalles. Comparte la normalización que antes vivía en el PDF. */
   function slugify(text) {
     return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+
+  /* 15 días de vigencia, pedido explícito de Camilo — protege contra un
+     PDF viejo que alguien retoma meses después con precios que ya
+     cambiaron. */
+  function formatValidUntil(fromDate) {
+    const d = new Date(fromDate);
+    d.setDate(d.getDate() + 15);
+    return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   /* El texto de WhatsApp es deliberadamente corto: el detalle completo
@@ -878,7 +935,13 @@
 
     y += 24;
     setFont('normal', 13); ctx.fillStyle = 'rgb(135,135,135)';
-    text(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
+    const today = new Date();
+    text(today.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
+    if (currentQuoteNumber) { setFont('normal', 13); textRight(currentQuoteNumber, y); }
+
+    y += 18;
+    setFont('normal', 11.5);
+    text('Válida hasta el ' + formatValidUntil(today), mx, y);
 
     y += 26;
     divider(y);
@@ -930,6 +993,13 @@
     ctx.fillStyle = mcOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
     text(PRICING.multicamLabel, mx, y);
     textRight(mcOn ? 'Sí' : 'No aplica', y);
+
+    y += 26;
+    const rushOn = state.urgente;
+    setFont('normal', 14);
+    ctx.fillStyle = rushOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
+    text(PRICING.rushLabel, mx, y);
+    textRight(rushOn ? ('Sí (+' + Math.round(PRICING.rushPct * 100) + '%)') : 'No aplica', y);
 
     y += 26;
     const revIncluded = PRICING.tiers[state.tier].revisions;
@@ -985,6 +1055,9 @@
     setFont('italic', 11); ctx.fillStyle = 'rgb(165,165,165)';
     text('No es una cotización cerrada: el número final puede variar según el detalle del proyecto.', mx, y);
 
+    y += 18;
+    text('Cambios de alcance respecto a lo descrito aquí pueden requerir una nueva cotización.', mx, y);
+
     return y + 40;
   }
 
@@ -1035,6 +1108,7 @@
   function openCalcModal() {
     if (!calcModal) return;
     calcLastFocused = document.activeElement;
+    currentQuoteNumber = generateQuoteNumber();
     updateCalc();
     calcModal.classList.add('is-open');
     calcModal.setAttribute('aria-hidden', 'false');
