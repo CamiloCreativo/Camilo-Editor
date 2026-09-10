@@ -1089,8 +1089,16 @@ h1, h2, h3, .bebas {
   font-size: clamp(0.98rem, 1.25vw, 1.18rem);
   color: var(--ink-txt);
 }
-.precios__lead:last-of-type { margin-bottom: clamp(36px, 5vw, 56px); }
+.precios__lead:last-of-type { margin-bottom: 10px; }
 .precios__lead strong { color: var(--ink); font-weight: 700; }
+.precios__currency-note {
+  margin: 0 0 clamp(36px, 5vw, 56px);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--earth);
+}
 
 .precios__scroll-hint {
   display: none;
@@ -1223,6 +1231,7 @@ h1, h2, h3, .bebas {
   overflow-y: auto;
   background: var(--ground);
   border-radius: 20px;
+  border-top: 6px solid var(--flare);
   padding: clamp(28px, 4vw, 44px);
   box-shadow: 0 40px 90px -30px rgba(0, 51, 102, 0.55);
   text-align: left;
@@ -1232,6 +1241,36 @@ h1, h2, h3, .bebas {
   transition: transform var(--t-med) var(--ease-out);
 }
 .calc-modal.is-open .calc__content { transform: scale(1) translateY(0); }
+
+/* Entrada en cascada de los campos, uno a uno — "muy smooth" no es solo el
+   marco: por eso el contenido también entra con vida. Puro CSS: funciona
+   igual sin GSAP, sin sumar una segunda coreografía en motion.js para tres
+   segundos de animación. */
+@keyframes calcFieldIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.calc-modal.is-open .calc__field,
+.calc-modal.is-open .calc__result,
+.calc-modal.is-open .calc__disclaimer,
+.calc-modal.is-open .calc__actions {
+  animation: calcFieldIn 0.45s var(--ease-out) both;
+}
+.calc-modal.is-open .calc__field:nth-of-type(1) { animation-delay: 0.03s; }
+.calc-modal.is-open .calc__field:nth-of-type(2) { animation-delay: 0.07s; }
+.calc-modal.is-open .calc__field:nth-of-type(3) { animation-delay: 0.11s; }
+.calc-modal.is-open .calc__field:nth-of-type(4) { animation-delay: 0.15s; }
+.calc-modal.is-open .calc__field:nth-of-type(5) { animation-delay: 0.19s; }
+.calc-modal.is-open .calc__field:nth-of-type(6) { animation-delay: 0.23s; }
+.calc-modal.is-open .calc__result { animation-delay: 0.27s; }
+.calc-modal.is-open .calc__disclaimer { animation-delay: 0.30s; }
+.calc-modal.is-open .calc__actions { animation-delay: 0.33s; }
+@media (prefers-reduced-motion: reduce) {
+  .calc-modal.is-open .calc__field,
+  .calc-modal.is-open .calc__result,
+  .calc-modal.is-open .calc__disclaimer,
+  .calc-modal.is-open .calc__actions { animation: none; }
+}
 
 /* El botón de cerrar del video flota ENCIMA de la caja porque esta es
    chica y transparente. El formulario es más alto y con fondo propio: si
@@ -1319,8 +1358,9 @@ h1, h2, h3, .bebas {
 
 .calc__result {
   margin-top: clamp(24px, 3vw, 34px);
-  padding-top: clamp(18px, 2.4vw, 26px);
-  border-top: 1.6px solid var(--ink);
+  padding: clamp(18px, 2.4vw, 26px) clamp(18px, 2.4vw, 24px);
+  background: var(--ink-wash);
+  border-radius: 14px;
 }
 .calc__result-label {
   display: block;
@@ -1339,58 +1379,60 @@ h1, h2, h3, .bebas {
   line-height: 1;
 }
 .calc__result-note { margin: 10px 0 0; font-size: 0.86rem; color: var(--earth); }
-.calc__disclaimer { margin: 10px 0 0; font-size: 0.8rem; color: var(--ink-txt); }
-
-/* Vista de impresión — oculta en pantalla. script.js la rellena y llama
-   a window.print() justo después.
-
-   Ocultar con `visibility:hidden` un `body *` deja el LARGO real de toda
-   la página intacto —solo invisible—, así que Chrome seguía paginando el
-   alto completo del sitio: el PDF salía de varias hojas casi en blanco
-   con la cotización solo en la primera. La solución es más simple:
-   apagar con `display:none` cada hijo directo de `body` menos
-   `.calc__print`. Sin layout que paginar, el PDF sale de una sola hoja. */
-.calc__print { display: none; }
-@media print {
-  body > *:not(.calc__print) { display: none !important; }
-  /* Las dos capas de fondo (luz y grano) son ::before/::after de body:
-     no son hijos, así que la regla de arriba no las toca. */
-  body::before, body::after { display: none !important; }
-  .calc__print {
-    display: block;
-    padding: 40px;
-    font-family: var(--font-cuerpo);
-    color: #111;
-    background: #fff;
-  }
-  .calc__print-mark {
-    font-family: var(--font-titulo);
-    font-size: 14px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #E36414;
-    margin-bottom: 18px;
-  }
-  .calc__print h1 {
-    font-family: var(--font-titulo);
-    font-weight: 400;
-    text-transform: uppercase;
-    font-size: 32px;
-    color: #003366;
-    margin: 0 0 22px;
-  }
-  .calc__print-rows { margin: 0; }
-  .calc__print-rows .row {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 7px 0;
-    border-bottom: 1px solid #ddd;
-    font-size: 14px;
-  }
-  .calc__print-total { font-size: 22px; font-weight: 700; margin: 20px 0 0; }
-  .calc__print-note, .calc__print-contact { font-size: 12px; color: #555; margin: 8px 0 0; }
+/* Discreta a propósito: es letra pequeña, no parte del mensaje principal. */
+.calc__disclaimer {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--ink-txt);
+  opacity: 0.75;
 }
+
+.calc__duration { display: flex; gap: 12px; }
+.calc__duration-part {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.calc__duration-part span {
+  font-size: 0.8rem;
+  color: var(--ink-txt);
+}
+.calc__number--sm { width: auto; flex: 1; min-width: 0; }
+
+.calc__result-currency {
+  font-family: var(--font-cuerpo);
+  font-weight: 700;
+  font-size: clamp(0.85rem, 1.6vw, 1rem);
+  color: var(--ink-txt);
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.calc__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: clamp(20px, 3vw, 28px);
+}
+.calc__whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 26px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-cuerpo);
+  font-weight: 700;
+  font-size: 0.94rem;
+  border: 1.6px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--t-med) var(--ease-out), color var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out);
+}
+.calc__whatsapp:hover { background: var(--ink); color: var(--ground); transform: translateY(-2px); }
+.calc__whatsapp:active { transform: translateY(0); }
 
 /* =========================================================
    CONTACTO

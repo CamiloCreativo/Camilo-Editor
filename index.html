@@ -264,6 +264,7 @@
           tiene un costo aparte. No trabajo por debajo de $15, sin importar
           cuán corto sea el video.
         </p>
+        <p class="precios__currency-note">Todos los precios de esta página están en dólares (USD).</p>
 
         <p class="precios__scroll-hint">Desliza para ver Medio y Pro →</p>
         <div class="precios__table-wrap">
@@ -310,7 +311,7 @@
                 <td>—</td><td>—</td><td>Sí</td>
               </tr>
 
-              <tr class="precios__group"><th colspan="4" scope="colgroup">Precio según duración</th></tr>
+              <tr class="precios__group"><th colspan="4" scope="colgroup">Precio según duración (USD)</th></tr>
               <tr>
                 <th scope="row">Menos de 1 min</th>
                 <td>$15</td><td>$25</td><td>$50</td>
@@ -342,7 +343,7 @@
 
         <div class="precios__extras">
           <div>
-            <h3>Si te falta algo</h3>
+            <h3>Si te falta algo (USD)</h3>
             <p>Estos precios asumen que tú traes el material. Si necesitas que yo resuelva algo de esto, se suma al presupuesto:</p>
             <dl class="precios__list">
               <div class="precios__row"><dt>Buscar y curar B-roll</dt><dd>$5–10 / min usado</dd></div>
@@ -429,6 +430,11 @@
       <h3 id="calcTitle" class="calc__title">Calcula tu estimado</h3>
 
       <div class="calc__field">
+        <label class="calc__label" for="calcName">Tu nombre o el de tu marca (opcional)</label>
+        <input class="calc__number" type="text" id="calcName" maxlength="60" placeholder="Para personalizar tu cotización">
+      </div>
+
+      <div class="calc__field">
         <span class="calc__label">Nivel</span>
         <div class="calc__pills" role="radiogroup" aria-label="Nivel de edición">
           <label class="calc__pill"><input type="radio" name="calcTier" value="basico" checked><span>Básico</span></label>
@@ -438,8 +444,11 @@
       </div>
 
       <div class="calc__field">
-        <label class="calc__label" for="calcMin">Duración del video (minutos)</label>
-        <input class="calc__number" type="number" id="calcMin" min="0" max="60" step="1" value="1" inputmode="numeric">
+        <span class="calc__label">Duración del video</span>
+        <div class="calc__duration">
+          <label class="calc__duration-part"><input class="calc__number calc__number--sm" type="number" id="calcMin" min="0" max="59" step="1" value="1" inputmode="numeric"><span>min</span></label>
+          <label class="calc__duration-part"><input class="calc__number calc__number--sm" type="number" id="calcSec" min="0" max="59" step="5" value="0" inputmode="numeric"><span>seg</span></label>
+        </div>
       </div>
 
       <div class="calc__field">
@@ -468,24 +477,16 @@
 
       <div class="calc__result">
         <span class="calc__result-label">Estimado</span>
-        <strong class="calc__result-value" id="calcTotal">$15</strong>
+        <strong class="calc__result-value">$<span id="calcTotal">15</span><span class="calc__result-currency"> USD</span></strong>
         <p class="calc__result-note" id="calcLongNote" hidden>Para más de 20 minutos, mejor escríbeme directamente y lo afinamos.</p>
-        <p class="calc__disclaimer">Esto es un estimado, no una cotización cerrada — el número final puede variar según el detalle del proyecto.</p>
       </div>
+      <p class="calc__disclaimer">No es una cotización cerrada — el número final puede variar según el detalle del proyecto.</p>
 
-      <button type="button" class="calc__export" id="calcExportBtn">Descargar como PDF</button>
+      <div class="calc__actions">
+        <button type="button" class="calc__export" id="calcExportBtn">Descargar PDF</button>
+        <button type="button" class="calc__whatsapp" id="calcWhatsappBtn">Enviar por WhatsApp</button>
+      </div>
     </div>
-  </div>
-
-  <!-- Vista de impresión: oculta en pantalla, es lo único que se ve al
-       exportar. script.js la rellena justo antes de llamar a window.print(). -->
-  <div class="calc__print" id="calcPrint" aria-hidden="true">
-    <div class="calc__print-mark">Camilo Creativo</div>
-    <h1>Cotización estimada</h1>
-    <dl class="calc__print-rows" id="calcPrintBody"></dl>
-    <p class="calc__print-total">Estimado: <strong id="calcPrintTotal"></strong></p>
-    <p class="calc__print-note">Esto es un estimado, no una cotización cerrada — el número final puede variar según el detalle del proyecto.</p>
-    <p class="calc__print-contact">camilojuan197@gmail.com · +57 321 327 5783 · camilocreativo.github.io/Camilo-Editor</p>
   </div>
 
   <!-- ===== TOAST ===== -->
@@ -497,6 +498,10 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/Flip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
+
+  <!-- jsPDF 4.2.1 — versión fijada. Solo genera el PDF de la calculadora;
+       si no carga, el botón avisa por toast en vez de fallar en silencio. -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js"></script>
 
   <script src="script.js"></script>
   <script src="motion.js"></script>

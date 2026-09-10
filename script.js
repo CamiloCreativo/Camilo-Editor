@@ -455,10 +455,10 @@
      números.
 
      Los precios de la tabla son rangos porque el detalle real de un
-     proyecto los mueve. Cada extra "de rango" usa aquí su punto medio,
-     así que el total que arma la calculadora es un estimado de verdad,
-     no una regla de tres exacta — por eso el resultado dice "estimado"
-     y no "cotización". */
+     proyecto los mueve. Cada extra "de rango" usa aquí su punto medio. El
+     total final se redondea siempre HACIA ARRIBA (Math.ceil, nunca
+     Math.round): es la regla de negocio que pidió Camilo — el margen de
+     redondeo lo absorbe el estimado, no al revés. */
   const PRICING = {
     tiers: {
       basico: { label: 'Básico', points: [[1, 15], [2, 30], [5, 60], [10, 90], [15, 120], [20, 140]] },
@@ -477,6 +477,7 @@
       '2k': { label: '1440p / 2K', pct: 0.15 },
       '4k': { label: '2160p / 4K', pct: 0.25 }
     },
+    multicamLabel: 'Sincronizar 2+ cámaras',
     multicamPct: 0.18 // +15–20%, punto medio
   };
 
@@ -500,17 +501,25 @@
     return p1 + rate * (m - m1);
   }
 
+  /* "2:40" se escribe como 2 min + 40 seg, no como 2.40 minutos: por eso
+     la duración vive en dos campos (minutos y segundos), no en uno solo
+     con decimales que nadie usaría bien. */
   function readCalcState() {
     const calcModal = document.getElementById('calcModal');
     if (!calcModal) return null;
     const tier = (calcModal.querySelector('input[name="calcTier"]:checked') || {}).value || 'basico';
     const resolucion = (calcModal.querySelector('input[name="calcRes"]:checked') || {}).value || 'sd';
     const minInput = document.getElementById('calcMin');
-    const minutes = minInput ? Math.max(0, Number(minInput.value) || 0) : 1;
+    const secInput = document.getElementById('calcSec');
+    const min = minInput ? Math.max(0, Number(minInput.value) || 0) : 1;
+    const sec = secInput ? Math.min(59, Math.max(0, Number(secInput.value) || 0)) : 0;
+    const minutes = min + sec / 60;
     const extras = Array.from(calcModal.querySelectorAll('input[name="calcExtra"]:checked')).map(el => el.value);
     const multicamEl = document.getElementById('calcMulticam');
     const multicam = !!(multicamEl && multicamEl.checked);
-    return { tier, minutes, resolucion, extras, multicam };
+    const nameEl = document.getElementById('calcName');
+    const nombre = nameEl ? nameEl.value.trim() : '';
+    return { tier, min, sec, minutes, resolucion, extras, multicam, nombre };
   }
 
   function computeEstimate(state) {
@@ -525,11 +534,42 @@
     let pct = PRICING.resolucion[state.resolucion] ? PRICING.resolucion[state.resolucion].pct : 0;
     if (state.multicam) pct += PRICING.multicamPct;
     const total = subtotal * (1 + pct);
-    return { base, extrasTotal, pct, total };
+    return { base, extrasTotal, pct, total: Math.ceil(total) };
+  }
+
+  function formatDuration(state) {
+    if (state.min === 0) return state.sec + ' seg';
+    if (state.sec === 0) return state.min + ' min';
+    return state.min + ' min ' + state.sec + ' seg';
   }
 
   let calcCurrentState = null;
   let calcCurrentResult = null;
+
+  /* Cuenta hacia el nuevo total en vez de saltar de golpe — el mismo
+     principio "muy smooth" del modal, aplicado al número. Sin GSAP a
+     propósito: script.js tiene que seguir funcionando si el CDN de GSAP
+     cae, y esto es solo un requestAnimationFrame con un ease propio. */
+  function animateCalcTotal(newValue) {
+    const el = document.getElementById('calcTotal');
+    if (!el) return;
+    const from = Number(el.textContent) || 0;
+    if (from === newValue) { el.textContent = newValue; return; }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = newValue;
+      return;
+    }
+    const duration = 380;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(from + (newValue - from) * eased);
+      if (p < 1) requestAnimationFrame(tick);
+      else el.textContent = newValue;
+    }
+    requestAnimationFrame(tick);
+  }
 
   function updateCalc() {
     const state = readCalcState();
@@ -538,39 +578,144 @@
     calcCurrentState = state;
     calcCurrentResult = result;
 
-    const totalEl = document.getElementById('calcTotal');
-    if (totalEl) totalEl.textContent = '$' + Math.round(result.total);
+    animateCalcTotal(result.total);
 
     const noteEl = document.getElementById('calcLongNote');
     if (noteEl) noteEl.hidden = state.minutes <= 20;
   }
 
-  function buildPrintSummary(state, result) {
-    const tierLabel = PRICING.tiers[state.tier].label;
-    const rows = [
-      ['Nivel', tierLabel],
-      ['Duración', state.minutes + ' min']
-    ];
-    if (state.extras.length) {
-      const names = state.extras.map(id => (PRICING.extras.find(e => e.id === id) || {}).label).filter(Boolean);
-      if (names.length) rows.push(['Extras', names.join(', ')]);
-    }
-    if (state.resolucion !== 'sd') rows.push(['Resolución', PRICING.resolucion[state.resolucion].label]);
-    if (state.multicam) rows.push(['Multicámara', 'Sí']);
+  /* Texto compartido entre el PDF y WhatsApp: cada extra y el recargo de
+     cámaras se listan SIEMPRE, marcados o no — "no aplica" para lo que no
+     se marcó, no un hueco silencioso. */
+  function calcChecklist(state) {
+    const items = PRICING.extras.map(ex => ({ label: ex.label, on: state.extras.indexOf(ex.id) !== -1 }));
+    items.push({ label: PRICING.multicamLabel, on: state.multicam });
+    return items;
+  }
 
-    const body = document.getElementById('calcPrintBody');
-    if (body) {
-      body.innerHTML = rows.map(([k, v]) =>
-        '<div class="row"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>'
-      ).join('');
+  function generatePdf(state, result) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      showToast('No pude generar el PDF: la librería no cargó. Intenta de nuevo.');
+      return;
     }
-    const totalEl = document.getElementById('calcPrintTotal');
-    if (totalEl) totalEl.textContent = '$' + Math.round(result.total) + ' (estimado)';
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const mx = 56;
+    let y = 0;
+
+    function textRight(txt, yy) {
+      doc.text(txt, pageW - mx - doc.getTextWidth(txt), yy);
+    }
+    function divider(yy) {
+      doc.setDrawColor(224, 224, 224);
+      doc.setLineWidth(1);
+      doc.line(mx, yy, pageW - mx, yy);
+    }
+
+    doc.setFillColor(227, 100, 20);
+    doc.rect(0, 0, pageW, 10, 'F');
+
+    y = 60;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(227, 100, 20);
+    doc.text('CAMILO CREATIVO', mx, y);
+
+    y += 32;
+    doc.setFontSize(22); doc.setTextColor(0, 51, 102);
+    doc.text(state.nombre ? ('Cotización para ' + state.nombre) : 'Cotización de edición de video', mx, y);
+
+    y += 17;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(135, 135, 135);
+    doc.text(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
+
+    y += 20;
+    divider(y);
+
+    y += 28;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(0, 51, 102);
+    doc.text('Nivel', mx, y);
+    doc.setFont('helvetica', 'bold'); textRight(PRICING.tiers[state.tier].label, y);
+
+    y += 23;
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 51, 102);
+    doc.text('Duración', mx, y);
+    doc.setFont('helvetica', 'bold'); textRight(formatDuration(state), y);
+
+    y += 26;
+    divider(y);
+    y += 22;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90, 62, 43);
+    doc.text('EXTRAS', mx, y);
+
+    PRICING.extras.forEach(ex => {
+      const on = state.extras.indexOf(ex.id) !== -1;
+      y += 20;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+      doc.setTextColor(on ? 0 : 178, on ? 51 : 178, on ? 102 : 178);
+      doc.text(ex.label, mx, y);
+      textRight(on ? 'Sí' : 'No aplica', y);
+    });
+
+    y += 26;
+    divider(y);
+    y += 22;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90, 62, 43);
+    doc.text('RECARGOS', mx, y);
+
+    y += 20;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(0, 51, 102);
+    doc.text('Resolución de entrega', mx, y);
+    textRight(PRICING.resolucion[state.resolucion].label, y);
+
+    y += 20;
+    const mcOn = state.multicam;
+    doc.setTextColor(mcOn ? 0 : 178, mcOn ? 51 : 178, mcOn ? 102 : 178);
+    doc.text(PRICING.multicamLabel, mx, y);
+    textRight(mcOn ? 'Sí' : 'No aplica', y);
+
+    y += 44;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(135, 135, 135);
+    doc.text('ESTIMADO', mx, y);
+    y += 33;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(29); doc.setTextColor(0, 51, 102);
+    doc.text('$' + result.total + ' USD', mx, y);
+
+    y += 24;
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(165, 165, 165);
+    doc.text('No es una cotizacion cerrada: el numero final puede variar segun el detalle del proyecto.', mx, y);
+
+    const base = state.nombre
+      ? state.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      : '';
+    doc.save('cotizacion-camilo-creativo' + (base ? '-' + base : '') + '.pdf');
+  }
+
+  function buildWhatsappText(state, result) {
+    const lines = [];
+    lines.push('Hola Camilo!' + (state.nombre ? ' Soy ' + state.nombre + '.' : ''));
+    lines.push('Quiero cotizar un video:');
+    lines.push('- Nivel: ' + PRICING.tiers[state.tier].label);
+    lines.push('- Duración: ' + formatDuration(state));
+    calcChecklist(state).forEach(item => {
+      lines.push('- ' + item.label + ': ' + (item.on ? 'sí' : 'no aplica'));
+    });
+    if (state.resolucion !== 'sd') lines.push('- Resolución: ' + PRICING.resolucion[state.resolucion].label);
+    lines.push('- Estimado: $' + result.total + ' USD');
+    lines.push('');
+    lines.push('¿Hablamos?');
+    return lines.join('\n');
+  }
+
+  function sendCalcWhatsapp() {
+    if (!calcCurrentState || !calcCurrentResult) updateCalc();
+    const text = buildWhatsappText(calcCurrentState, calcCurrentResult);
+    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
   }
 
   const calcModal = document.getElementById('calcModal');
   const calcOpenBtn = document.getElementById('calcOpenBtn');
   const calcExportBtn = document.getElementById('calcExportBtn');
+  const calcWhatsappBtn = document.getElementById('calcWhatsappBtn');
   let calcLastFocused = null;
 
   function openCalcModal() {
@@ -580,7 +725,7 @@
     calcModal.classList.add('is-open');
     calcModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    const first = calcModal.querySelector('.calc__pill input:checked, input, button');
+    const first = calcModal.querySelector('#calcName, input, button');
     if (first) first.focus();
   }
 
@@ -594,15 +739,16 @@
 
   if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalcModal);
   if (calcModal) {
-    calcModal.querySelectorAll('input').forEach(el => el.addEventListener('change', updateCalc));
-    const minInput = document.getElementById('calcMin');
-    if (minInput) minInput.addEventListener('input', updateCalc);
+    calcModal.querySelectorAll('input').forEach(el => {
+      el.addEventListener('change', updateCalc);
+      if (el.type === 'number' || el.type === 'text') el.addEventListener('input', updateCalc);
+    });
   }
   if (calcExportBtn) calcExportBtn.addEventListener('click', () => {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
-    buildPrintSummary(calcCurrentState, calcCurrentResult);
-    window.print();
+    generatePdf(calcCurrentState, calcCurrentResult);
   });
+  if (calcWhatsappBtn) calcWhatsappBtn.addEventListener('click', sendCalcWhatsapp);
   document.querySelectorAll('[data-close-calc]').forEach(el => el.addEventListener('click', closeCalcModal));
 
   /* Escape y el atrapa-foco valen para el modal que esté abierto, sea el
