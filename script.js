@@ -957,274 +957,65 @@
     return d.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
   }
 
-  /* El texto de WhatsApp es deliberadamente corto: el detalle completo
-     —nivel, duración, extras, proyecto— ya va en el PDF descargado.
-     Esto solo abre la conversación. */
-  function buildSimpleWhatsappText(details) {
+  /* Reemplaza a buildSimpleWhatsappText(): Camilo pidió que el mensaje
+     lleve todo el desglose (antes era un saludo corto porque el detalle
+     vivía solo en la imagen/PDF). Ahora que "Confirmar y enviar" ya no
+     depende de que la imagen viaje adjunta —ver confirmAndSend()—, el
+     texto es la garantía de que la información completa llega a Camilo
+     sin importar si la persona además adjunta el PDF o no. Mismo
+     contenido y mismo criterio que generatePdf() (todos los extras y
+     recargos, marcados o no) pero en texto plano con *negrita* de
+     WhatsApp, no en un documento aparte. */
+  function buildDetailedWhatsappText(state, result, details) {
     const nombre = details && details.nombre;
-    return 'Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : '') + ' Aquí tienes mi cotización, ¿hablamos?';
-  }
-
-  /* Mismo contenido que generatePdf(), dibujado en un <canvas> en vez de
-     con jsPDF: esto es lo que viaja pegado al mensaje de WhatsApp vía
-     Web Share API. Se ejecuta dos veces con el mismo código —draw=false
-     solo mide, draw=true además pinta— para que el alto del canvas final
-     salga exacto sin necesidad de paginar como el PDF: al ser una sola
-     imagen no hay límite de página que respetar. */
-  function renderEstimateImage(ctx, state, result, details, draw) {
-    const width = 960;
-    const mx = 64;
-    const contentWidth = width - mx * 2;
-    let y = 0;
-
-    function setFont(weight, size) {
-      ctx.font = weight + ' ' + size + 'px Helvetica, Arial, sans-serif';
-    }
-    function text(txt, x, yy) {
-      if (draw) ctx.fillText(txt, x, yy);
-    }
-    function textRight(txt, yy) {
-      text(txt, width - mx - ctx.measureText(txt).width, yy);
-    }
-    function divider(yy) {
-      if (!draw) return;
-      ctx.strokeStyle = 'rgb(224,224,224)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(mx, yy);
-      ctx.lineTo(width - mx, yy);
-      ctx.stroke();
-    }
-    function wrap(txt, maxWidth) {
-      const words = txt.split(' ');
-      const lines = [];
-      let line = '';
-      words.forEach(word => {
-        const test = line ? line + ' ' + word : word;
-        if (line && ctx.measureText(test).width > maxWidth) { lines.push(line); line = word; }
-        else line = test;
-      });
-      if (line) lines.push(line);
-      return lines;
-    }
-    /* Misma idea que en generatePdf(): una fila que puede llevar un
-       valor largo (método de entrega, un "Otro" escrito a mano) se mide
-       antes de decidir entre una línea a la derecha o el valor envuelto
-       debajo, en vez de dejarlo correr fuera del lienzo. */
-    function wrapSafeRow(label, value) {
-      setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
-      text(label, mx, y);
-      const fits = ctx.measureText(value).width <= contentWidth * 0.58;
-      if (fits) {
-        textRight(value, y);
-      } else {
-        y += 20;
-        setFont('normal', 13);
-        wrap(value, contentWidth).forEach((line, i) => {
-          if (i > 0) y += 18;
-          text(line, mx, y);
-        });
-      }
-    }
-
-    if (draw) { ctx.fillStyle = 'rgb(227,100,20)'; ctx.fillRect(0, 0, width, 10); }
-
-    const nombre = details && details.nombre;
-    y = 56;
-    setFont('bold', 15); ctx.fillStyle = 'rgb(227,100,20)';
-    text('CAMILO CREATIVO', mx, y);
-
-    y += 40;
-    setFont('bold', 28); ctx.fillStyle = 'rgb(0,51,102)';
-    text(nombre ? ('Cotización para ' + nombre) : 'Cotización de edición de video', mx, y);
-
-    y += 24;
-    setFont('normal', 13); ctx.fillStyle = 'rgb(135,135,135)';
-    const today = new Date();
-    text(today.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
-    if (currentQuoteNumber) { setFont('normal', 13); textRight(currentQuoteNumber, y); }
-
-    y += 18;
-    setFont('normal', 11.5);
-    text('Válida hasta el ' + formatValidUntil(today), mx, y);
-
-    y += 26;
-    divider(y);
-
-    y += 36;
-    setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
-    text('Nivel', mx, y);
-    setFont('bold', 15); textRight(PRICING.tiers[state.tier].label, y);
-
-    y += 30;
-    setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
-    text('Duración', mx, y);
-    setFont('bold', 15); textRight(formatDuration(state), y);
-
-    y += 30;
-    setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
-    text('Entrega estimada', mx, y);
-    setFont('bold', 15); textRight(result.plazo, y);
-
-    y += 34;
-    divider(y);
-    y += 28;
-    setFont('bold', 12); ctx.fillStyle = 'rgb(90,62,43)';
-    text('EXTRAS', mx, y);
-
+    const lines = [];
+    lines.push('Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : '') + ' Aquí está mi cotización:');
+    if (currentQuoteNumber) lines.push('_Referencia: ' + currentQuoteNumber + '_');
+    lines.push('');
+    lines.push('*Nivel:* ' + PRICING.tiers[state.tier].label);
+    lines.push('*Duración:* ' + formatDuration(state));
+    lines.push('*Entrega estimada:* ' + result.plazo);
+    lines.push('');
+    lines.push('*Extras:*');
     PRICING.extras.forEach(ex => {
       const on = state.extras.indexOf(ex.id) !== -1;
-      y += 26;
-      setFont('normal', 14);
-      ctx.fillStyle = on ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
-      text(ex.label, mx, y);
-      textRight(on ? 'Sí' : 'No aplica', y);
+      lines.push('- ' + ex.label + ': ' + (on ? 'Sí' : 'No aplica'));
     });
-
-    y += 34;
-    divider(y);
-    y += 28;
-    setFont('bold', 12); ctx.fillStyle = 'rgb(90,62,43)';
-    text('RECARGOS', mx, y);
-
-    y += 26;
-    setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
-    text('Resolución de entrega', mx, y);
-    setFont('bold', 14); textRight(PRICING.resolucion[state.resolucion].label, y);
-
-    y += 26;
-    wrapSafeRow('Almacenamiento de entrega', formatAlmacenamiento(state, details));
-
-    y += 26;
-    const mcOn = state.multicam;
-    setFont('normal', 14);
-    ctx.fillStyle = mcOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
-    text(PRICING.multicamLabel, mx, y);
-    textRight(mcOn ? 'Sí' : 'No aplica', y);
-
-    y += 26;
-    const rushOn = state.urgente;
-    setFont('normal', 14);
-    ctx.fillStyle = rushOn ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
-    text(PRICING.rushLabel, mx, y);
-    textRight(rushOn ? ('Sí (+' + Math.round(PRICING.rushPct * 100) + '%)') : 'No aplica', y);
-
-    y += 26;
+    lines.push('');
+    lines.push('*Recargos:*');
+    lines.push('- Resolución de entrega: ' + PRICING.resolucion[state.resolucion].label);
+    lines.push('- Almacenamiento de entrega: ' + formatAlmacenamiento(state, details));
+    lines.push('- ' + PRICING.multicamLabel + ': ' + (state.multicam ? 'Sí' : 'No aplica'));
+    lines.push('- ' + PRICING.rushLabel + ': ' + (state.urgente ? ('Sí (+' + Math.round(PRICING.rushPct * 100) + '%)') : 'No aplica'));
     const revIncluded = PRICING.tiers[state.tier].revisions;
-    setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
-    text('Revisiones incluidas', mx, y);
-    setFont('bold', 14); textRight(revIncluded + (revIncluded === 1 ? ' ronda' : ' rondas'), y);
-
-    y += 26;
+    lines.push('- Revisiones incluidas: ' + revIncluded + (revIncluded === 1 ? ' ronda' : ' rondas'));
     const revExtra = state.extraRevisions || 0;
-    setFont('normal', 14);
-    ctx.fillStyle = revExtra > 0 ? 'rgb(0,51,102)' : 'rgb(178,178,178)';
-    text('Rondas de revisión extra', mx, y);
-    textRight(revExtra > 0 ? (revExtra + ' (+' + Math.round(PRICING.revisionExtraPct * revExtra * 100) + '%)') : 'No aplica', y);
+    lines.push('- Rondas de revisión extra: ' + (revExtra > 0 ? (revExtra + ' (+' + Math.round(PRICING.revisionExtraPct * revExtra * 100) + '%)') : 'No aplica'));
 
     if (details) {
-      y += 34;
-      divider(y);
-      y += 28;
-      setFont('bold', 12); ctx.fillStyle = 'rgb(90,62,43)';
-      text('PROYECTO', mx, y);
-
-      y += 26;
-      setFont('normal', 14); ctx.fillStyle = 'rgb(0,51,102)';
-      text('Para', mx, y);
-      setFont('bold', 14); textRight(details.nombre || 'No especificado', y);
-
-      const addWrapped = (label, txt) => {
-        setFont('normal', 13);
-        const lines = wrap(txt, contentWidth);
-        y += 28;
-        setFont('bold', 11); ctx.fillStyle = 'rgb(0,51,102)';
-        text(label.toUpperCase(), mx, y);
-        y += 18;
-        setFont('normal', 13); ctx.fillStyle = 'rgb(0,51,102)';
-        lines.forEach(line => { text(line, mx, y); y += 18; });
-      };
-      addWrapped('Descripción', details.descripcion || 'No especificada');
-      addWrapped('Guion o estructura', details.guion || 'No especificado');
-      addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
-      addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
-      addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
-      addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
-      addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
-
-      y += 28;
-      setFont('bold', 11); ctx.fillStyle = 'rgb(0,51,102)';
-      text('ESPECIFICACIONES DE EXPORTACIÓN — VIDEO', mx, y);
-      y += 22;
-      wrapSafeRow('Formato de archivo', details.expContainer || 'No especificado');
-      y += 22;
-      wrapSafeRow('Códec de video', details.expVideoCodec || 'No especificado');
-      y += 22;
-      wrapSafeRow('Cuadros por segundo', details.expFps || 'No especificado');
-
-      y += 28;
-      setFont('bold', 11); ctx.fillStyle = 'rgb(0,51,102)';
-      text('ESPECIFICACIONES DE EXPORTACIÓN — AUDIO', mx, y);
-      y += 22;
-      wrapSafeRow('Códec de audio', details.expAudioCodec || 'No especificado');
-      y += 22;
-      wrapSafeRow('Frecuencia de muestreo', details.expSampleRate || 'No especificado');
+      lines.push('');
+      lines.push('*Proyecto:*');
+      lines.push('- Descripción: ' + (details.descripcion || 'No especificada'));
+      lines.push('- Guion o estructura: ' + (details.guion || 'No especificado'));
+      lines.push('- Formato: ' + (details.formato.length ? details.formato.join(', ') : 'No especificado'));
+      lines.push('- Estilo: ' + (details.estilo.length ? details.estilo.join(', ') : 'No especificado'));
+      lines.push('- Tono: ' + (details.tono.length ? details.tono.join(', ') : 'No especificado'));
+      lines.push('- Ritmo: ' + (details.ritmo.length ? details.ritmo.join(', ') : 'No especificado'));
+      lines.push('- Requerimientos específicos: ' + (details.requerimientos || 'Ninguno'));
+      lines.push('- Formato de archivo: ' + (details.expContainer || 'No especificado'));
+      lines.push('- Códec de video: ' + (details.expVideoCodec || 'No especificado'));
+      lines.push('- Cuadros por segundo: ' + (details.expFps || 'No especificado'));
+      lines.push('- Códec de audio: ' + (details.expAudioCodec || 'No especificado'));
+      lines.push('- Frecuencia de muestreo: ' + (details.expSampleRate || 'No especificado'));
     }
 
-    y += 50;
-    setFont('normal', 12); ctx.fillStyle = 'rgb(135,135,135)';
-    text('ESTIMADO', mx, y);
-    y += 40;
-    setFont('bold', 38); ctx.fillStyle = 'rgb(0,51,102)';
-    text('$' + result.total + ' USD', mx, y);
+    lines.push('');
+    lines.push('*Estimado: $' + result.total + ' USD*');
+    lines.push('_Válida hasta el ' + formatValidUntil(new Date()) + '. No es una cotización cerrada — puede variar según el detalle del proyecto. Cambios de alcance pueden requerir una nueva cotización._');
+    lines.push('');
+    lines.push('También descargué el PDF completo — te lo mando si lo quieres ver. ¿Hablamos?');
 
-    y += 28;
-    setFont('italic', 11); ctx.fillStyle = 'rgb(165,165,165)';
-    text('No es una cotización cerrada: el número final puede variar según el detalle del proyecto.', mx, y);
-
-    y += 18;
-    text('Cambios de alcance respecto a lo descrito aquí pueden requerir una nueva cotización.', mx, y);
-
-    return y + 40;
-  }
-
-  /* Doble pasada: la primera mide sin pintar (canvas de 10px de alto solo
-     para tener un contexto con el que medir texto), la segunda pinta sobre
-     un canvas ya del alto correcto. Sin esto habría que adivinar el alto
-     de antemano o recortar contenido. */
-  function generateEstimateImageBlob(state, result, details) {
-    return new Promise((resolve, reject) => {
-      const width = 960;
-      const measureCanvas = document.createElement('canvas');
-      measureCanvas.width = width;
-      measureCanvas.height = 10;
-      const mctx = measureCanvas.getContext('2d');
-      const height = renderEstimateImage(mctx, state, result, details, false);
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = Math.ceil(height);
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      renderEstimateImage(ctx, state, result, details, true);
-
-      canvas.toBlob(blob => {
-        if (blob) resolve(blob);
-        else reject(new Error('No se pudo generar la imagen de la cotización.'));
-      }, 'image/png');
-    });
-  }
-
-  function downloadBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return lines.join('\n');
   }
 
   const calcModal = document.getElementById('calcModal');
@@ -1376,47 +1167,23 @@
     });
   }
 
-  /* Revertido: la Web Share API abre el selector nativo de apps, pero
-     una vez adentro de WhatsApp la persona elige a QUIÉN escribirle —la
-     API no tiene forma de indicar un contacto. Si alguien no tiene el
-     número de Camilo guardado, "compartir a WhatsApp" no llega a Camilo
-     en absoluto: puede terminar en cualquier chat. `wa.me/<número>` es
-     la única vía que garantiza el destinatario correcto, a cambio de no
-     poder adjuntar archivos — por eso vuelve a ser el único camino, sin
-     condición. La imagen viaja aparte: se copia al portapapeles para
-     que sea un Ctrl+V (o mantener presionado y pegar) dentro del chat
-     que ya se abrió con Camilo, en vez de descargarla a ciegas. Sin
-     soporte de portapapeles de imágenes, cae a descargarla. */
-  async function confirmAndSend() {
+  /* `wa.me/<número>` sigue siendo el único camino: es la única vía que
+     garantiza que el mensaje llega al chat de Camilo, sin selector de
+     apps de por medio — ver el historial en [[Estructura del sitio]].
+     La imagen por portapapeles se retira: ya no hace falta un mecanismo
+     aparte para que el detalle llegue "adjunto", porque ahora el texto
+     mismo lo lleva completo (buildDetailedWhatsappText()). El PDF se
+     descarga automáticamente al confirmar, como respaldo visual
+     opcional — si la persona quiere, lo adjunta ella misma; si no, el
+     texto ya tiene todo lo que Camilo necesita para responder. */
+  function confirmAndSend() {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     const details = readDetailsState();
-    const text = buildSimpleWhatsappText(details);
+    const text = buildDetailedWhatsappText(calcCurrentState, calcCurrentResult, details);
 
-    let blob;
-    try {
-      blob = await generateEstimateImageBlob(calcCurrentState, calcCurrentResult, details);
-    } catch (err) {
-      showToast('No pude generar la imagen de la cotización. Intenta de nuevo.');
-      return;
-    }
-
-    let copied = false;
-    if (navigator.clipboard && window.ClipboardItem) {
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        copied = true;
-      } catch (err) {
-        copied = false;
-      }
-    }
-    if (!copied) {
-      downloadBlob(new File([blob], 'cotizacion-camilo-creativo.png', { type: 'image/png' }), 'cotizacion-camilo-creativo.png');
-    }
-
+    generatePdf(calcCurrentState, calcCurrentResult, details);
     window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
-    showToast(copied
-      ? 'Copié tu cotización y te abrí WhatsApp — pégala (Ctrl+V o mantén presionado y Pegar) en el chat.'
-      : 'Descargué tu cotización y te abrí WhatsApp — adjúntala en el chat si quieres que Camilo la vea completa.');
+    showToast('Descargué tu cotización en PDF y te abrí WhatsApp con todos los detalles — mándale el PDF también si quieres que Camilo lo vea completo.');
     closeDetailsModal();
   }
 
