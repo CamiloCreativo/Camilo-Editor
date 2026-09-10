@@ -585,12 +585,24 @@ h1, h2, h3, .bebas {
   font-size: clamp(0.98rem, 1.25vw, 1.18rem);
   color: var(--ink-txt);
 }
-.personal__grid {
+/* Slider horizontal, no rejilla: tres verticales lado a lado se comían
+   demasiado alto de página, sobre todo en móvil. Scroll nativo con snap
+   en vez de un mando a medida — con tres tarjetas no hace falta más. */
+.personal__track {
   display: flex;
-  flex-wrap: wrap;
-  gap: clamp(24px, 3vw, 40px);
+  gap: clamp(20px, 3vw, 40px);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--pad);
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;             /* que la sombra no se corte al scrollear */
+  scrollbar-width: none;           /* Firefox */
 }
+.personal__track::-webkit-scrollbar { display: none; }
 .personal__card {
+  flex: 0 0 auto;
+  width: min(78vw, 330px);
+  scroll-snap-align: start;
   border-radius: 18px;
   overflow: hidden;
   background: var(--ink-wash);
@@ -1402,9 +1414,6 @@ h1, h2, h3, .bebas {
   .pitch__text { align-self: start; }
   .pitch__player { width: min(78vw, 330px); justify-self: center; }
   .pitch__cue { margin-top: 0; justify-self: start; }
-
-  .personal__grid { justify-content: center; }
-  .personal__card { width: min(78vw, 330px); }
 
   .proc__frags { grid-template-columns: repeat(6, 1fr); }
   .frag, .frag--lead, .proc__photo { grid-column: 1 / -1 !important; }
