@@ -719,6 +719,12 @@
       showToast('No pude generar el PDF: la librería no cargó. Intenta de nuevo.');
       return 'error';
     }
+    /* Todo lo de abajo queda envuelto en un try/catch a propósito: sin él,
+       cualquier fallo inesperado del navegador dibujando el PDF (visto
+       primero en iOS, confirmado después en Android/Edge) no truena nada
+       en consola visible ni avisa — el botón "no hace nada", que es
+       justo lo contrario de la regla de CLAUDE.md de fallar ruidosamente. */
+    try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
@@ -942,14 +948,15 @@
     const filename = 'cotizacion-camilo-creativo' + (nombre ? '-' + slugify(nombre) : '') + '.pdf';
 
     /* `doc.save()` simula un clic en un <a download> hacia un blob: URL.
-       En cualquier navegador de iOS (todos corren WebKit, no solo Safari)
-       esa propiedad existe en el DOM pero el sistema la ignora: en vez de
-       guardar el archivo, navega al blob sin descargar nada — así que en
-       celular los tres botones de PDF (calculadora, detalles, "Confirmar y
-       enviar") se sentían rotos por completo. Abrir el mismo blob en una
-       pestaña nueva sí funciona ahí: cae en el visor de PDF nativo, desde
-       donde compartir/guardar es un toque. */
-    if (isIOSDevice()) {
+       Primero se confirmó que iOS (todo navegador ahí, todos WebKit) ignora
+       esa propiedad y solo navega al blob sin descargar nada. Camilo probó
+       el arreglo desde un Android con Edge y seguía sin pasar nada —el
+       mismo truco falla también ahí, no es exclusivo de iOS—, así que la
+       condición pasó de "es iOS" a "es un celular": en cualquier navegador
+       móvil se abre el blob en una pestaña nueva en vez de intentar
+       `doc.save()`, y ahí el visor de PDF nativo deja compartir/guardar en
+       un toque. En escritorio nada cambia. */
+    if (isMobileDevice()) {
       const opened = window.open(doc.output('bloburl'), '_blank');
       if (!opened) {
         showToast('El navegador bloqueó la pestaña del PDF — permite ventanas emergentes en este sitio e intenta de nuevo.');
@@ -959,13 +966,17 @@
     }
     doc.save(filename);
     return 'download';
+    } catch (err) {
+      showToast('No pude generar el PDF: ' + (err && err.message ? err.message : 'ocurrió un error') + '. Intenta de nuevo.');
+      return 'error';
+    }
   }
 
   /* iPadOS se anuncia como "Macintosh" desde 2019, así que el user agent
      solo no alcanza: se distingue de un Mac de verdad por tener pantalla
      táctil (`maxTouchPoints`), algo que ningún Mac trae. */
-  function isIOSDevice() {
-    return /iP(hone|od|ad)/.test(navigator.userAgent) ||
+  function isMobileDevice() {
+    return /Android|iP(hone|od|ad)/i.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
@@ -1209,12 +1220,12 @@
     const details = readDetailsState();
     const text = buildDetailedWhatsappText(calcCurrentState, calcCurrentResult, details);
 
-    /* WhatsApp abre primero. En iOS, generatePdf() también puede abrir una
-       pestaña (ver isIOSDevice() más abajo) — si el bloqueador de
-       ventanas emergentes de Safari solo deja pasar una por gesto, que se
-       sacrifique la del PDF y no la de WhatsApp, que es "el canal que de
-       verdad cierra una consulta" (ver más abajo, "Los botones de enviar
-       cambiaron de peso visual"). */
+    /* WhatsApp abre primero. En celular, generatePdf() también puede abrir
+       una pestaña (ver isMobileDevice() más abajo) — si el navegador solo
+       deja pasar una ventana emergente por gesto, que se sacrifique la
+       del PDF y no la de WhatsApp, que es "el canal que de verdad cierra
+       una consulta" (ver más abajo, "Los botones de enviar cambiaron de
+       peso visual"). */
     window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
     const mode = generatePdf(calcCurrentState, calcCurrentResult, details);
     if (mode === 'tab') {
