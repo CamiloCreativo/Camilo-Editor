@@ -479,8 +479,51 @@
     },
     multicamLabel: 'Sincronizar 2+ cámaras',
     multicamPct: 0.18, // +15–20%, punto medio
-    revisionExtraPct: 0.15 // por ronda extra, sobre el precio de la pieza — Tarifas.md
+    revisionExtraPct: 0.15, // por ronda extra, sobre el precio de la pieza — Tarifas.md
+    /* Referencia real de Camilo, un solo punto por nivel a 1 min: Básico
+       1–3 días, Medio 2–4, Pro 4–5. El resto de tramos (2–5, 5–10, 10–15,
+       15–20 min) es criterio del asistente extendiendo esa referencia —
+       igual que ya pasó con los `points` de precio — sin calibrar contra
+       tiempo real todavía. Por tramo, no interpolado: un plazo no se
+       promedia entre minutos como un precio. */
+    plazos: {
+      basico: [
+        { max: 2, label: '1–3 días' },
+        { max: 5, label: '2–4 días' },
+        { max: 10, label: '3–5 días' },
+        { max: 15, label: '4–6 días' },
+        { max: 20, label: '5–7 días' }
+      ],
+      medio: [
+        { max: 2, label: '2–4 días' },
+        { max: 5, label: '3–5 días' },
+        { max: 10, label: '4–6 días' },
+        { max: 15, label: '5–7 días' },
+        { max: 20, label: '6–8 días' }
+      ],
+      pro: [
+        { max: 2, label: '4–5 días' },
+        { max: 5, label: '5–7 días' },
+        { max: 10, label: '7–9 días' },
+        { max: 15, label: '9–11 días' },
+        { max: 20, label: '11–13 días' }
+      ]
+    }
   };
+
+  /* Por debajo del primer tramo el plazo es plano, igual que el precio
+     (priceForDuration): un video de 20 segundos no se entrega más rápido
+     que uno de 1–2 min. Por encima del último tramo (20 min) devuelve el
+     tramo más largo — el aviso `calcLongNote` ya redirige a escribir
+     directo para esos casos. */
+  function plazoForDuration(tierKey, minutes) {
+    const tramos = PRICING.plazos[tierKey];
+    const m = Math.max(0, minutes);
+    for (let i = 0; i < tramos.length; i++) {
+      if (m <= tramos[i].max) return tramos[i].label;
+    }
+    return tramos[tramos.length - 1].label;
+  }
 
   /* Interpolación lineal por tramos entre los puntos (minuto, precio) de
      la tabla. Antes del primer punto la tarifa es plana (regla del
@@ -536,7 +579,8 @@
     if (state.multicam) pct += PRICING.multicamPct;
     pct += PRICING.revisionExtraPct * state.extraRevisions;
     const total = subtotal * (1 + pct);
-    return { base, extrasTotal, pct, total: Math.ceil(total) };
+    const plazo = plazoForDuration(state.tier, state.minutes);
+    return { base, extrasTotal, pct, total: Math.ceil(total), plazo };
   }
 
   function formatDuration(state) {
@@ -581,6 +625,9 @@
     calcCurrentResult = result;
 
     animateCalcTotal(result.total);
+
+    const plazoEl = document.getElementById('calcPlazo');
+    if (plazoEl) plazoEl.textContent = result.plazo;
 
     const noteEl = document.getElementById('calcLongNote');
     if (noteEl) noteEl.hidden = state.minutes <= 20;
@@ -653,6 +700,11 @@
       doc.setFont('helvetica', 'normal'); doc.setFontSize(S(11));
       put('Duración', y);
       doc.setFont('helvetica', 'bold'); textRight(formatDuration(state), y);
+
+      y += S(23);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(S(11)); doc.setTextColor(0, 51, 102);
+      put('Entrega estimada', y);
+      doc.setFont('helvetica', 'bold'); textRight(result.plazo, y);
 
       y += S(26);
       divider(y);
@@ -840,6 +892,11 @@
     setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
     text('Duración', mx, y);
     setFont('bold', 15); textRight(formatDuration(state), y);
+
+    y += 30;
+    setFont('normal', 15); ctx.fillStyle = 'rgb(0,51,102)';
+    text('Entrega estimada', mx, y);
+    setFont('bold', 15); textRight(result.plazo, y);
 
     y += 34;
     divider(y);
