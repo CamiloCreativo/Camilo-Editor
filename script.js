@@ -582,10 +582,12 @@
     if (noteEl) noteEl.hidden = state.minutes <= 20;
   }
 
-  /* nombre es opcional: el botón "Descargar PDF" de la calculadora lo
+  /* details es opcional: el botón "Descargar PDF" de la calculadora lo
      llama sin él (esa vista no conoce el modal de detalles) y el PDF
-     sale genérico; "Confirmar y enviar" sí lo tiene y lo pasa. */
-  function generatePdf(state, result, nombre) {
+     sale genérico, sin sección de proyecto; "Confirmar y enviar" sí lo
+     tiene y lo pasa completo. */
+  function generatePdf(state, result, details) {
+    const nombre = details && details.nombre;
     if (!window.jspdf || !window.jspdf.jsPDF) {
       showToast('No pude generar el PDF: la librería no cargó. Intenta de nuevo.');
       return;
@@ -665,6 +667,37 @@
     doc.text(PRICING.multicamLabel, mx, y);
     textRight(mcOn ? 'Sí' : 'No aplica', y);
 
+    if (details) {
+      y += 26;
+      divider(y);
+      y += 22;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(90, 62, 43);
+      doc.text('PROYECTO', mx, y);
+
+      y += 20;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(0, 51, 102);
+      doc.text('Para', mx, y);
+      doc.setFont('helvetica', 'bold'); textRight(details.nombre || 'No especificado', y);
+
+      const addWrapped = (label, text) => {
+        y += 22;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(0, 51, 102);
+        doc.text(label.toUpperCase(), mx, y);
+        y += 14;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(0, 51, 102);
+        doc.splitTextToSize(text, pageW - mx * 2).forEach(line => {
+          doc.text(line, mx, y);
+          y += 14;
+        });
+      };
+      addWrapped('Descripción', details.descripcion || 'No especificada');
+      addWrapped('Formato', details.formato.length ? details.formato.join(', ') : 'No especificado');
+      addWrapped('Estilo', details.estilo.length ? details.estilo.join(', ') : 'No especificado');
+      addWrapped('Tono', details.tono.length ? details.tono.join(', ') : 'No especificado');
+      addWrapped('Ritmo', details.ritmo.length ? details.ritmo.join(', ') : 'No especificado');
+      addWrapped('Requerimientos específicos', details.requerimientos || 'Ninguno');
+    }
+
     y += 44;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(135, 135, 135);
     doc.text('ESTIMADO', mx, y);
@@ -694,19 +727,18 @@
     return 'Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : '') + ' Aquí tienes mi cotización, ¿hablamos?';
   }
 
-  /* ---------- Imagen de la cotización con detalles ----------
-     wa.me solo puede prellenar TEXTO en el chat: no existe forma de
-     adjuntar un archivo desde un enlace de WhatsApp Click to Chat. Por
-     eso "Confirmar y enviar" abre el texto Y descarga aparte una imagen
-     con el mismo contenido y diseño del PDF —showToast() en
-     confirmAndSend() deja explícito que hay que adjuntarla a mano en el
-     chat que se acaba de abrir: "fallar ruidosamente" antes que fingir
-     una automatización que no existe.
+  /* ---------- Imagen de la cotización, para compartir por WhatsApp ----------
+     Esta imagen NUNCA se descarga — es interna, solo existe para viajar
+     junto al mensaje de WhatsApp. Se arma como un archivo en memoria
+     (File) y se entrega a la Web Share API (navigator.share), que abre
+     el selector nativo del sistema para elegir WhatsApp y manda la
+     imagen y el texto juntos en un solo envío, sin pasos manuales.
 
-     measureAndDraw recorre la MISMA lista de bloques dos veces: una sin
-     dibujar (solo para sumar el alto real y poder dimensionar el lienzo
-     antes de crearlo) y otra dibujando de verdad. Una sola función de
-     layout evita mantener la posición de cada línea por partida doble. */
+     layoutQuoteBlocks recorre la MISMA lista de bloques dos veces: una
+     sin dibujar (solo para sumar el alto real y poder dimensionar el
+     lienzo antes de crearlo) y otra dibujando de verdad. Una sola
+     función de layout evita mantener la posición de cada línea por
+     partida doble. */
   const QUOTE_IMG = {
     width: 960,
     margin: 56,
@@ -846,7 +878,20 @@
     return y + margin;
   }
 
-  function downloadQuoteImage(state, result, details) {
+  /* Sin promesas ni fetch(dataURL): navigator.share() solo funciona
+     dentro de la ventana breve de "gesto del usuario" que abrió el
+     clic, y cualquier await de por medio arriesga perderla. atob() es
+     síncrono, así que el archivo queda listo en el mismo tick. */
+  function dataUrlToBlob(dataUrl) {
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+
+  function buildQuoteImageFile(state, result, details) {
     const blocks = buildQuoteBlocks(state, result, details);
 
     const measureCtx = document.createElement('canvas').getContext('2d');
@@ -862,12 +907,9 @@
     ctx.fillRect(0, 0, canvas.width, 10);
     layoutQuoteBlocks(ctx, blocks, true);
 
-    const link = document.createElement('a');
-    link.download = 'cotizacion-camilo-creativo' + (details && details.nombre ? '-' + slugify(details.nombre) : '') + '.png';
-    link.href = canvas.toDataURL('image/png');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const blob = dataUrlToBlob(canvas.toDataURL('image/png'));
+    const filename = 'cotizacion-camilo-creativo' + (details && details.nombre ? '-' + slugify(details.nombre) : '') + '.png';
+    return new File([blob], filename, { type: 'image/png' });
   }
 
   const calcModal = document.getElementById('calcModal');
@@ -952,24 +994,36 @@
     if (detailsLastFocused && detailsLastFocused.focus) detailsLastFocused.focus();
   }
 
-  /* El texto se manda ANTES de generar el PDF y la imagen: window.open
-     tiene que quedar en la misma pila de llamadas del clic o el
-     navegador lo trata como pop-up no solicitado y lo bloquea. Dibujar
-     el PDF y el lienzo es síncrono, así que no hay ningún await de por
-     medio que rompa eso.
+  /* El PDF es el único archivo que se descarga —con la sección PROYECTO
+     incluida—. La imagen nunca toca el disco: se arma en memoria y se
+     entrega a la Web Share API junto con el texto, en un solo envío,
+     para que WhatsApp la reciba como quien adjunta una foto a mano.
 
-     El PDF es para quien cotiza (queda con un documento formal); la
-     imagen es lo que se manda por WhatsApp —wa.me solo prellena texto,
-     no puede adjuntar un archivo—, así que se descarga aparte para
-     adjuntarla a mano en el chat que se abre con un texto corto. */
+     Todo esto es síncrono (jsPDF, Canvas, atob) a propósito: tanto
+     navigator.share() como el window.open() de respaldo necesitan
+     ocurrir dentro del mismo gesto del clic; un await de por medio
+     puede perder esa ventana y el navegador los bloquea. */
   function confirmAndSend() {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     const details = readDetailsState();
     const text = buildSimpleWhatsappText(details);
-    window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
-    generatePdf(calcCurrentState, calcCurrentResult, details.nombre);
-    downloadQuoteImage(calcCurrentState, calcCurrentResult, details);
-    showToast('Descargué tu PDF y la imagen de la cotización — adjunta la imagen en el chat de WhatsApp que se acaba de abrir.');
+
+    generatePdf(calcCurrentState, calcCurrentResult, details);
+
+    const imageFile = buildQuoteImageFile(calcCurrentState, calcCurrentResult, details);
+    const canShareImage = !!(navigator.canShare && navigator.canShare({ files: [imageFile] }));
+
+    if (canShareImage) {
+      navigator.share({ files: [imageFile], text }).catch(() => {});
+      showToast('Descargué tu PDF — la imagen de la cotización se comparte junto con tu mensaje de WhatsApp.');
+    } else {
+      /* Sin soporte para compartir archivos (la mayoría de escritorio):
+         la imagen no se descarga —pedido explícito—, así que aquí solo
+         viaja el texto corto. */
+      window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+      showToast('Descargué tu PDF. Tu navegador no admite enviar la imagen junto al mensaje, así que te abrí WhatsApp solo con el texto.');
+    }
+
     closeDetailsModal();
   }
 
