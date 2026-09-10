@@ -263,63 +263,99 @@ h1, h2, h3, .bebas {
 .nav__toggle.is-open span:last-child { width: 26px; transform: translateY(-4px) rotate(-45deg); }
 
 /* Aviso sobre "Precios": CSS puro, sin :hover, para que se vea igual en
-   escritorio y en el cajón móvil (ahí no hay puntero que lo revele). Entra
-   con rebote y luego late cada tanto para llamar la atención. */
+   escritorio y en el cajón móvil (ahí no hay puntero que lo revele).
+   Grande y con rebote de sobra a propósito —Camilo pidió "mucho más
+   llamativo"—: entra con overshoot, late fuerte y suelta un anillo de
+   aviso, el mismo lenguaje que ya usan los iconos flotantes. */
 .nav__item--tip { position: relative; display: inline-flex; }
 .nav__tip {
   position: absolute;
   left: 50%;
   top: 100%;
-  margin-top: 10px;
+  margin-top: 12px;
   transform: translateX(-50%);
   white-space: nowrap;
-  padding: 7px 14px;
+  padding: 13px 24px;
   background: var(--flare);
   color: var(--tinta);
   font-family: var(--font-cuerpo);
-  font-weight: 700;
-  font-size: 0.72rem;
+  font-weight: 800;
+  font-size: 1rem;
   letter-spacing: 0.01em;
   border-radius: 999px;
-  box-shadow: 0 10px 24px -8px rgba(227, 100, 20, 0.6);
+  box-shadow: 0 18px 36px -8px rgba(227, 100, 20, 0.8);
   opacity: 0;
   pointer-events: none;
-  animation: navTipIn 0.5s var(--ease-out) 1.6s both, navTipPulse 2.6s ease-in-out 2.4s infinite;
+  animation: navTipIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 1.2s both,
+             navTipPulse 1.7s ease-in-out 1.9s infinite;
 }
 .nav__tip::before {
   content: '';
   position: absolute;
-  left: 50%; top: -5px;
-  width: 10px; height: 10px;
+  left: 50%; top: -6px;
+  width: 13px; height: 13px;
   background: var(--flare);
   transform: translateX(-50%) rotate(45deg);
 }
+.nav__tip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0 rgba(227, 100, 20, 0.6);
+  animation: navTipRing 1.7s ease-out 1.9s infinite;
+  pointer-events: none;
+}
 @keyframes navTipIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.7); }
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.5); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 @keyframes navTipPulse {
   0%, 100% { transform: translateX(-50%) scale(1); }
-  50%      { transform: translateX(-50%) scale(1.06); }
+  50%      { transform: translateX(-50%) scale(1.14); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .nav__tip { animation: navTipIn 0.01s linear both; }
+@keyframes navTipRing {
+  0%   { box-shadow: 0 0 0 0 rgba(227, 100, 20, 0.6); }
+  70%  { box-shadow: 0 0 0 22px rgba(227, 100, 20, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(227, 100, 20, 0); }
 }
 /* En el cajón móvil el enlace queda en flujo vertical: el aviso se planta
    debajo, sin la flecha ni el centrado absoluto que solo tienen sentido
-   en la barra horizontal de escritorio. */
+   en la barra horizontal de escritorio. position:relative (no static)
+   para que el anillo de .nav__tip::after —absoluto, inset:0— mida contra
+   la píldora y no contra toda la barra de nav. */
 @media (max-width: 768px) {
   .nav__item--tip { flex-direction: column; align-items: flex-start; }
   .nav__tip {
-    position: static;
-    margin-top: 2px;
-    max-width: 220px;
+    /* Reinicia left/transform del bloque de escritorio: ahí centran la
+       píldora bajo el enlace (position:absolute); en flujo normal
+       (position:relative) esos mismos valores se leen como un
+       desplazamiento adicional y la empujaban fuera del cajón. */
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    display: inline-block;
+    margin-top: 4px;
+    /* El cajón mide min(80vw, 320px) con 34px de relleno a cada lado:
+       en un teléfono angosto (320px) quedan ~188px útiles. 190px cabe
+       siempre, aun con box-sizing:border-box de por medio. */
+    max-width: 190px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
     white-space: normal;
-    animation: navTipFadeMobile 0.5s ease-out 1.6s both, navTipPulseMobile 2.6s ease-in-out 2.4s infinite;
+    animation: navTipFadeMobile 0.5s ease-out 1.2s both, navTipPulseMobile 1.7s ease-in-out 1.9s infinite;
   }
   .nav__tip::before { display: none; }
-  @keyframes navTipFadeMobile { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes navTipPulseMobile { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes navTipFadeMobile { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+  @keyframes navTipPulseMobile { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+}
+/* Va DESPUÉS del bloque móvil a propósito: con igual especificidad, el
+   orden en la hoja decide, y movimiento reducido tiene que ganarle a
+   cualquiera de los dos —escritorio o móvil— sin importar el ancho. */
+@media (prefers-reduced-motion: reduce) {
+  .nav__tip { animation: navTipIn 0.01s linear both; }
+  .nav__tip::after { animation: none; }
 }
 
 /* =========================================================
@@ -1277,13 +1313,16 @@ h1, h2, h3, .bebas {
 .precios__calc-btn {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 13px 26px;
+  gap: 12px;
+  /* Más grande a propósito —Camilo pidió que los botones de cotizar
+     crecieran—: clamp() para que siga creciendo con el viewport en vez
+     de quedar fijo y verse chico en pantallas anchas. */
+  padding: clamp(17px, 2.2vw, 22px) clamp(32px, 4vw, 44px);
   background: var(--flare);
   color: var(--tinta);
   font-family: var(--font-cuerpo);
   font-weight: 700;
-  font-size: 0.94rem;
+  font-size: clamp(1.05rem, 1.5vw, 1.2rem);
   border: 0;
   border-radius: 999px;
   cursor: pointer;
@@ -1292,7 +1331,7 @@ h1, h2, h3, .bebas {
 .precios__calc-btn { margin-top: clamp(22px, 3vw, 32px); }
 .precios__calc-btn:hover { transform: translateY(-2px); }
 .precios__calc-btn:active { transform: translateY(0); }
-.precios__calc-btn svg { width: 18px; height: 18px; }
+.precios__calc-btn svg { width: clamp(20px, 2.2vw, 24px); height: clamp(20px, 2.2vw, 24px); }
 
 /* Título de Precios + el mismo botón de la calculadora, esta vez al lado
    del titular en vez de solo al cierre de la sección. */

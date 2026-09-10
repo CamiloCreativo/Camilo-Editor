@@ -582,16 +582,10 @@
     if (noteEl) noteEl.hidden = state.minutes <= 20;
   }
 
-  /* Texto compartido entre el PDF y WhatsApp: cada extra y el recargo de
-     cámaras se listan SIEMPRE, marcados o no — "no aplica" para lo que no
-     se marcó, no un hueco silencioso. */
-  function calcChecklist(state) {
-    const items = PRICING.extras.map(ex => ({ label: ex.label, on: state.extras.indexOf(ex.id) !== -1 }));
-    items.push({ label: PRICING.multicamLabel, on: state.multicam });
-    return items;
-  }
-
-  function generatePdf(state, result) {
+  /* nombre es opcional: el botón "Descargar PDF" de la calculadora lo
+     llama sin él (esa vista no conoce el modal de detalles) y el PDF
+     sale genérico; "Confirmar y enviar" sí lo tiene y lo pasa. */
+  function generatePdf(state, result, nombre) {
     if (!window.jspdf || !window.jspdf.jsPDF) {
       showToast('No pude generar el PDF: la librería no cargó. Intenta de nuevo.');
       return;
@@ -620,7 +614,7 @@
 
     y += 32;
     doc.setFontSize(22); doc.setTextColor(0, 51, 102);
-    doc.text('Cotización de edición de video', mx, y);
+    doc.text(nombre ? ('Cotización para ' + nombre) : 'Cotización de edición de video', mx, y);
 
     y += 17;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(135, 135, 135);
@@ -682,7 +676,7 @@
     doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(165, 165, 165);
     doc.text('No es una cotizacion cerrada: el numero final puede variar segun el detalle del proyecto.', mx, y);
 
-    doc.save('cotizacion-camilo-creativo.pdf');
+    doc.save('cotizacion-camilo-creativo' + (nombre ? '-' + slugify(nombre) : '') + '.pdf');
   }
 
   /* "Ana Pérez" -> "ana-perez", para nombrar el PNG de la cotización con
@@ -691,38 +685,13 @@
     return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
 
-  /* details es opcional: sin él (no debería pasar, "Enviar" siempre pasa
-     por el modal de detalles) el mensaje se arma igual, solo sin la
-     sección de proyecto. */
-  function buildWhatsappText(state, result, details) {
-    const lines = [];
+  /* El texto de WhatsApp es deliberadamente corto: el detalle completo
+     (nivel, duración, extras, proyecto) ya va en la imagen que se
+     adjunta a mano — repetirlo en el texto era ruido antes de que
+     Camilo alcance a abrir la imagen. Esto solo abre la conversación. */
+  function buildSimpleWhatsappText(details) {
     const nombre = details && details.nombre;
-    lines.push('Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : ''));
-    lines.push('Quiero cotizar un video:');
-    lines.push('- Nivel: ' + PRICING.tiers[state.tier].label);
-    lines.push('- Duración: ' + formatDuration(state));
-    calcChecklist(state).forEach(item => {
-      lines.push('- ' + item.label + ': ' + (item.on ? 'sí' : 'no aplica'));
-    });
-    if (state.resolucion !== 'sd') lines.push('- Resolución: ' + PRICING.resolucion[state.resolucion].label);
-    lines.push('- Estimado: $' + result.total + ' USD');
-
-    if (details) {
-      lines.push('');
-      lines.push('Sobre el proyecto:');
-      lines.push('- Descripción: ' + (details.descripcion || 'no especificada'));
-      lines.push('- Formato: ' + (details.formato.length ? details.formato.join(', ') : 'no especificado'));
-      lines.push('- Estilo: ' + (details.estilo.length ? details.estilo.join(', ') : 'no especificado'));
-      lines.push('- Tono: ' + (details.tono.length ? details.tono.join(', ') : 'no especificado'));
-      lines.push('- Ritmo: ' + (details.ritmo.length ? details.ritmo.join(', ') : 'no especificado'));
-      lines.push('- Requerimientos: ' + (details.requerimientos || 'ninguno'));
-      lines.push('');
-      lines.push('Te acabo de enviar por aquí la imagen con el detalle completo.');
-    }
-
-    lines.push('');
-    lines.push('¿Hablamos?');
-    return lines.join('\n');
+    return 'Hola Camilo!' + (nombre ? ' Soy ' + nombre + '.' : '') + ' Aquí tienes mi cotización, ¿hablamos?';
   }
 
   /* ---------- Imagen de la cotización con detalles ----------
@@ -983,17 +952,24 @@
     if (detailsLastFocused && detailsLastFocused.focus) detailsLastFocused.focus();
   }
 
-  /* El texto se manda ANTES de generar la imagen: window.open tiene que
-     quedar en la misma pila de llamadas del clic o el navegador lo trata
-     como pop-up no solicitado y lo bloquea. Dibujar el lienzo es
-     síncrono, así que no hay ningún await de por medio que rompa eso. */
+  /* El texto se manda ANTES de generar el PDF y la imagen: window.open
+     tiene que quedar en la misma pila de llamadas del clic o el
+     navegador lo trata como pop-up no solicitado y lo bloquea. Dibujar
+     el PDF y el lienzo es síncrono, así que no hay ningún await de por
+     medio que rompa eso.
+
+     El PDF es para quien cotiza (queda con un documento formal); la
+     imagen es lo que se manda por WhatsApp —wa.me solo prellena texto,
+     no puede adjuntar un archivo—, así que se descarga aparte para
+     adjuntarla a mano en el chat que se abre con un texto corto. */
   function confirmAndSend() {
     if (!calcCurrentState || !calcCurrentResult) updateCalc();
     const details = readDetailsState();
-    const text = buildWhatsappText(calcCurrentState, calcCurrentResult, details);
+    const text = buildSimpleWhatsappText(details);
     window.open('https://wa.me/573213275783?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+    generatePdf(calcCurrentState, calcCurrentResult, details.nombre);
     downloadQuoteImage(calcCurrentState, calcCurrentResult, details);
-    showToast('Descargué la imagen de tu cotización — adjúntala en el chat de WhatsApp que se acaba de abrir.');
+    showToast('Descargué tu PDF y la imagen de la cotización — adjunta la imagen en el chat de WhatsApp que se acaba de abrir.');
     closeDetailsModal();
   }
 
