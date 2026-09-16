@@ -465,14 +465,37 @@
       medio: { label: 'Medio', points: [[1, 25], [2, 50], [5, 100], [10, 170], [15, 220], [20, 280]], revisions: 2 },
       pro: { label: 'Pro', points: [[1, 50], [2, 100], [5, 230], [10, 450], [15, 650], [20, 850]], revisions: 2 }
     },
+    /* `kind` decide cómo escala cada extra con el nivel y la duración —
+       ver `tierWeight` / `durationFactor` más abajo:
+       - 'perMin': el monto ya es por minuto (se multiplica por los minutos
+         reales); solo se ajusta por nivel, la duración ya está en el rate.
+       - 'flat': escala por nivel Y duración — es el caso de "buscar o
+         resolver algo" que crece con lo largo que sea el video (SFX,
+         música, guion, locución).
+       - 'flatTier': escala solo por nivel — el esfuerzo no depende de la
+         duración del video (una miniatura no es más trabajo en un video
+         de 20 minutos que en uno de 1). */
     extras: [
-      { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'perMin', rate: 7.5 },    // $5–10/min, punto medio
+      { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'perMin', rate: 7.5 },    // $5–10/min, punto medio, antes de escalar por nivel
       { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
-      { id: 'sfx', label: 'SFX (efectos de sonido)', kind: 'flat', amount: 10 }, // $5–15, punto medio
-      { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio
-      { id: 'miniatura', label: 'Miniatura', kind: 'flat', amount: 12 },   // $10–15, punto medio
-      { id: 'guion', label: 'Redactar guion o estructura', kind: 'flat', amount: 20 } // $15–25, punto medio — repuesto 2026-09-10
+      { id: 'sfx', label: 'SFX personalizados o búsqueda extendida', kind: 'flat', amount: 10 }, // $5–15, punto medio, antes de escalar — SFX de base ya va incluido en todos los niveles, ver tabla "Qué incluye"
+      { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio, antes de escalar
+      { id: 'miniatura', label: 'Miniatura', kind: 'flatTier', amount: 12 },   // $10–15, punto medio, antes de escalar
+      { id: 'guion', label: 'Redactar guion o estructura', kind: 'flat', amount: 20 } // $15–25, punto medio, antes de escalar — repuesto 2026-09-10
     ],
+    /* Cuánto pesa cada nivel en el costo de "resolver algo que falta" — no
+       es la misma curva que el precio de edición (`tiers[x].points`):
+       un Pro no cuesta 3x más resolver un extra que un Básico, pero sí
+       algo más (más cuidado, más opciones, más iteración). Números del
+       asistente, mismo criterio de "sin calibrar" que el resto del
+       catálogo — Tarifas.md. */
+    tierWeight: { basico: 0.6, medio: 0.85, pro: 1.15 },
+    /* Mismo principio que `priceForDuration`: por debajo del primer punto
+       la tarifa es plana, después del último se extiende la pendiente.
+       En el minuto de referencia (10 min) el factor es 1 — ahí un extra
+       cuesta exactamente su monto de catálogo; antes de eso cuesta menos,
+       después, más. */
+    durationFactorPoints: [[1, 0.5], [2, 0.6], [5, 0.8], [10, 1.0], [15, 1.2], [20, 1.4]],
     resolucion: {
       sd: { label: 'Hasta 1080p', pct: 0 },
       '2k': { label: '1440p / 2K', pct: 0.15 },
@@ -584,6 +607,41 @@
     return p1 + rate * (m - m1);
   }
 
+  /* Misma interpolación que `priceForDuration`, sobre
+     `PRICING.durationFactorPoints` en vez de los puntos de precio —
+     separada de esa función a propósito, para no arriesgar el cálculo de
+     precio ya verificado con quince vueltas de pruebas. */
+  function durationFactor(minutes) {
+    const points = PRICING.durationFactorPoints;
+    const m = Math.max(0, minutes);
+    if (m <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++) {
+      const [m0, f0] = points[i - 1];
+      const [m1, f1] = points[i];
+      if (m <= m1) return f0 + (m - m0) / (m1 - m0) * (f1 - f0);
+    }
+    const [m0, f0] = points[points.length - 2];
+    const [m1, f1] = points[points.length - 1];
+    const rate = (f1 - f0) / (m1 - m0);
+    return f1 + rate * (m - m1);
+  }
+
+  /* Cuánto cuesta un extra concreto para un nivel y duración dados. Antes
+     cada extra era un monto fijo, igual para un video de 20 segundos que
+     para uno de 20 minutos — pedido de Camilo del 2026-09-15: que los
+     videos básicos o cortos no carguen el recargo completo, y que sí
+     pueda crecer en Pro/videos largos. Los recargos porcentuales
+     (multicámara, urgencia, resolución, revisión extra) no necesitan este
+     ajuste: ya son un % del subtotal, que a su vez escala con nivel y
+     duración — un recargo del 18% ya pesa menos en dólares sobre un
+     Básico de 1 min que sobre un Pro de 20. */
+  function extraAmount(extra, tierKey, minutes) {
+    const weight = PRICING.tierWeight[tierKey];
+    if (extra.kind === 'perMin') return extra.rate * weight * Math.max(0, minutes);
+    if (extra.kind === 'flatTier') return Math.round(extra.amount * weight);
+    return Math.round(extra.amount * weight * durationFactor(minutes));
+  }
+
   /* "2:40" se escribe como 2 min + 40 seg, no como 2.40 minutos: por eso
      la duración vive en dos campos (minutos y segundos), no en uno solo
      con decimales que nadie usaría bien. */
@@ -614,7 +672,7 @@
     state.extras.forEach(id => {
       const ex = PRICING.extras.find(e => e.id === id);
       if (!ex) return;
-      extrasTotal += ex.kind === 'perMin' ? ex.rate * state.minutes : ex.amount;
+      extrasTotal += extraAmount(ex, state.tier, state.minutes);
     });
     extrasTotal += PRICING.almacenamiento[state.almacenamiento] ? PRICING.almacenamiento[state.almacenamiento].amount : 0;
     const subtotal = base + extrasTotal;
