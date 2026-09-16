@@ -225,6 +225,22 @@
             </blockquote>
           </div>
         </div>
+
+        <!-- Mando del slider, en escritorio y en móvil: con cinco tarjetas
+             ni el arrastre táctil ni el scroll con shift son evidentes.
+             Nace oculto, script.js lo destapa — sin JS no aparecen flechas
+             que no llevan a ninguna parte. Reutiliza .rail__arrow/.rail__dot
+             del carrusel móvil del portafolio, sin la condición de los
+             768px: aquí hace falta en todos los anchos. -->
+        <div class="personal__rail" id="personalRail" hidden>
+          <button class="rail__arrow" type="button" data-personal-rail="prev" aria-label="Video anterior">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="rail__dots" id="personalDots" role="group" aria-label="Ir a un video"></div>
+          <button class="rail__arrow" type="button" data-personal-rail="next" aria-label="Video siguiente">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -404,12 +420,12 @@
             <h3>Si te falta algo (USD)</h3>
             <p>Estos precios asumen que tú traes el material. Si necesitas que yo resuelva algo de esto, se suma al presupuesto — el rango va de básico/corto a Pro/largo, la calculadora te da el número exacto para tu video:</p>
             <dl class="precios__list">
-              <div class="precios__row"><dt>Buscar o limpiar B-roll</dt><dd>$4.5–8.6 / min usado</dd></div>
-              <div class="precios__row"><dt>Elegir música con licencia</dt><dd>$3–16 / video</dd></div>
-              <div class="precios__row"><dt>SFX personalizados o búsqueda extendida</dt><dd>$3–16 / video</dd></div>
-              <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$6–32 / video</dd></div>
-              <div class="precios__row"><dt>Miniatura</dt><dd>$7–14</dd></div>
-              <div class="precios__row"><dt>Redactar guion o estructura</dt><dd>$6–32 / video</dd></div>
+              <div class="precios__row"><dt>Buscar o limpiar B-roll</dt><dd>$4–32 / video</dd></div>
+              <div class="precios__row"><dt>Elegir música con licencia</dt><dd>$3–17 / video</dd></div>
+              <div class="precios__row"><dt>SFX personalizados o búsqueda extendida</dt><dd>$3–17 / video</dd></div>
+              <div class="precios__row"><dt>Locución o voz en off (IA)</dt><dd>$6–33 / video</dd></div>
+              <div class="precios__row"><dt>Miniatura</dt><dd>$8–14</dd></div>
+              <div class="precios__row"><dt>Redactar guion o estructura</dt><dd>$6–33 / video</dd></div>
             </dl>
           </div>
           <div>

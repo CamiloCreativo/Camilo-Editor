@@ -723,6 +723,18 @@ h1, h2, h3, .bebas {
 /* El embed trae su propio margen: se anula para que la tarjeta lo controle. */
 .personal__card .tiktok-embed { margin: 0 !important; }
 
+/* Mando del slider — a diferencia de .work__rail, aquí NO hay
+   display:none de base ni consulta de 768px: hace falta en escritorio
+   igual que en móvil, porque nada en un mouse sugiere "esto se
+   desliza". Reutiliza .rail__arrow/.rail__dots/.rail__dot tal cual. */
+.personal__rail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: clamp(18px, 2.4vw, 28px);
+}
+
 /* =========================================================
    TRABAJO — el desfile, la dispersión y el abanico
    ========================================================= */

@@ -410,6 +410,92 @@
     railRefresh();
   }
 
+  /* ---------- Mando del slider de Marca personal ----------
+     Mismo mando visual que el carrusel móvil del portafolio
+     (.rail__arrow/.rail__dots/.rail__dot), pero sin la condición de los
+     768px: con cinco tarjetas hace falta también en escritorio, donde
+     nada en un mouse sugiere que `.personal__track` se desliza. Sin
+     filtros que seguir —la lista de tarjetas es fija—, así que el
+     controlador es más simple que `railInit()`. */
+  const personalTrackEl = document.querySelector('.personal__track');
+  const personalRailEl = document.getElementById('personalRail');
+  const personalDotsEl = document.getElementById('personalDots');
+  let personalRailTick = false;
+
+  function personalCards() {
+    return personalTrackEl ? Array.from(personalTrackEl.querySelectorAll('.personal__card')) : [];
+  }
+
+  function personalIndex() {
+    const list = personalCards();
+    if (!personalTrackEl || !list.length) return 0;
+    const linea = personalTrackEl.getBoundingClientRect().left;
+    let idx = 0, mejor = Infinity;
+    list.forEach((el, i) => {
+      const d = Math.abs(el.getBoundingClientRect().left - linea);
+      if (d < mejor) { mejor = d; idx = i; }
+    });
+    return idx;
+  }
+
+  function personalGo(i) {
+    const list = personalCards();
+    if (!list.length) return;
+    const el = list[Math.max(0, Math.min(list.length - 1, i))];
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'nearest', inline: 'start' });
+  }
+
+  function personalRenderDots() {
+    if (!personalDotsEl) return;
+    personalDotsEl.innerHTML = personalCards().map((_, i) =>
+      '<button class="rail__dot" type="button" data-go="' + i + '" aria-label="Ir al video ' + (i + 1) + '"></button>'
+    ).join('');
+    personalDotsEl.querySelectorAll('.rail__dot').forEach(btn => {
+      btn.addEventListener('click', () => personalGo(Number(btn.dataset.go)));
+    });
+  }
+
+  function personalRailSync() {
+    if (!personalRailEl || !personalTrackEl || personalRailEl.hidden) return;
+    const activo = personalIndex();
+    if (personalDotsEl) {
+      personalDotsEl.querySelectorAll('.rail__dot').forEach((d, k) => {
+        d.classList.toggle('is-on', k === activo);
+        if (k === activo) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
+    }
+    const prev = personalRailEl.querySelector('[data-personal-rail="prev"]');
+    const next = personalRailEl.querySelector('[data-personal-rail="next"]');
+    const fin = personalTrackEl.scrollLeft + personalTrackEl.clientWidth >= personalTrackEl.scrollWidth - 4;
+    if (prev) prev.disabled = personalTrackEl.scrollLeft <= 4;
+    if (next) next.disabled = fin;
+  }
+
+  function personalRailInit() {
+    if (!personalRailEl || !personalTrackEl || personalCards().length < 2) return;
+
+    personalRenderDots();
+    personalRailEl.hidden = false;
+
+    personalRailEl.querySelectorAll('[data-personal-rail]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        personalGo(personalIndex() + (btn.dataset.personalRail === 'next' ? 1 : -1));
+      });
+    });
+
+    personalTrackEl.addEventListener('scroll', () => {
+      if (personalRailTick) return;
+      personalRailTick = true;
+      requestAnimationFrame(() => { personalRailTick = false; personalRailSync(); });
+    }, { passive: true });
+
+    window.addEventListener('resize', personalRailSync, { passive: true });
+
+    personalRailSync();
+  }
+
   /* ---------- Modal ---------- */
   const modal = document.getElementById('videoModal');
   const modalVideo = document.getElementById('modalVideo');
@@ -467,16 +553,22 @@
     },
     /* `kind` decide cómo escala cada extra con el nivel y la duración —
        ver `tierWeight` / `durationFactor` más abajo:
-       - 'perMin': el monto ya es por minuto (se multiplica por los minutos
-         reales); solo se ajusta por nivel, la duración ya está en el rate.
-       - 'flat': escala por nivel Y duración — es el caso de "buscar o
-         resolver algo" que crece con lo largo que sea el video (SFX,
-         música, guion, locución).
+       - 'flat': escala por nivel Y duración, sobre `durationFactorPoints`
+         (o `durationPoints` propio si el extra lo trae) — es el caso de
+         "buscar o resolver algo" que crece con lo largo que sea el video.
        - 'flatTier': escala solo por nivel — el esfuerzo no depende de la
          duración del video (una miniatura no es más trabajo en un video
          de 20 minutos que en uno de 1). */
     extras: [
-      { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'perMin', rate: 7.5 },    // $5–10/min, punto medio, antes de escalar por nivel
+      /* B-roll tenía su propio kind 'perMin' (rate × minutos): a los 20
+         minutos de un Pro eso eran $172, un recargo mucho más agresivo
+         que el de cualquier otro extra — "muy desgastante", en palabras
+         de Camilo. Pasa a 'flat' como el resto, pero con una curva de
+         duración propia y más empinada que la genérica (ver
+         `durationPoints` abajo): curar B-roll sí crece más con la
+         duración que, por ejemplo, poner SFX, solo que no de forma
+         lineal sin techo. */
+      { id: 'broll', label: 'Buscar o limpiar B-roll', kind: 'flat', amount: 13, durationPoints: [[1, 0.5], [2, 0.65], [5, 0.95], [10, 1.35], [15, 1.75], [20, 2.1]] }, // $4–32/video, Básico/1min a Pro/20min
       { id: 'musica', label: 'Música con licencia', kind: 'flat', amount: 10 },
       { id: 'sfx', label: 'SFX personalizados o búsqueda extendida', kind: 'flat', amount: 10 }, // $5–15, punto medio, antes de escalar — SFX de base ya va incluido en todos los niveles, ver tabla "Qué incluye"
       { id: 'locucion', label: 'Locución o voz en off (IA)', kind: 'flat', amount: 20 }, // $15–25, punto medio, antes de escalar
@@ -494,7 +586,8 @@
        la tarifa es plana, después del último se extiende la pendiente.
        En el minuto de referencia (10 min) el factor es 1 — ahí un extra
        cuesta exactamente su monto de catálogo; antes de eso cuesta menos,
-       después, más. */
+       después, más. Curva por defecto — un extra puede traer la suya
+       propia en `durationPoints` (ver B-roll arriba). */
     durationFactorPoints: [[1, 0.5], [2, 0.6], [5, 0.8], [10, 1.0], [15, 1.2], [20, 1.4]],
     resolucion: {
       sd: { label: 'Hasta 1080p', pct: 0 },
@@ -607,12 +700,13 @@
     return p1 + rate * (m - m1);
   }
 
-  /* Misma interpolación que `priceForDuration`, sobre
-     `PRICING.durationFactorPoints` en vez de los puntos de precio —
-     separada de esa función a propósito, para no arriesgar el cálculo de
-     precio ya verificado con quince vueltas de pruebas. */
-  function durationFactor(minutes) {
-    const points = PRICING.durationFactorPoints;
+  /* Misma interpolación que `priceForDuration`, sobre un arreglo de
+     puntos propio — separada de esa función a propósito, para no
+     arriesgar el cálculo de precio ya verificado con quince vueltas de
+     pruebas. Recibe los puntos como parámetro (no siempre
+     `PRICING.durationFactorPoints`): B-roll trae su propia curva, más
+     empinada — ver `extraAmount()`. */
+  function durationFactor(points, minutes) {
     const m = Math.max(0, minutes);
     if (m <= points[0][0]) return points[0][1];
     for (let i = 1; i < points.length; i++) {
@@ -634,12 +728,16 @@
      (multicámara, urgencia, resolución, revisión extra) no necesitan este
      ajuste: ya son un % del subtotal, que a su vez escala con nivel y
      duración — un recargo del 18% ya pesa menos en dólares sobre un
-     Básico de 1 min que sobre un Pro de 20. */
+     Básico de 1 min que sobre un Pro de 20.
+
+     Siempre `Math.ceil`, nunca `Math.round` ni decimales — misma regla
+     que ya rige el total final: el margen de redondeo lo absorbe el
+     estimado, nunca al revés. */
   function extraAmount(extra, tierKey, minutes) {
     const weight = PRICING.tierWeight[tierKey];
-    if (extra.kind === 'perMin') return extra.rate * weight * Math.max(0, minutes);
-    if (extra.kind === 'flatTier') return Math.round(extra.amount * weight);
-    return Math.round(extra.amount * weight * durationFactor(minutes));
+    if (extra.kind === 'flatTier') return Math.ceil(extra.amount * weight);
+    const points = extra.durationPoints || PRICING.durationFactorPoints;
+    return Math.ceil(extra.amount * weight * durationFactor(points, minutes));
   }
 
   /* "2:40" se escribe como 2 min + 40 seg, no como 2.40 minutos: por eso
@@ -1478,6 +1576,7 @@
   renderTicker();
   renderFilters();
   railInit();
+  personalRailInit();
   onScroll();
 
   /* motion.js consume esto. Si motion.js no llega a correr,
