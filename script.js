@@ -1084,47 +1084,91 @@
     });
   }
 
-  /* ---------- Embed de TikTok, perezoso ----------
-     Antes `embed.js` se cargaba siempre desde el HTML, así lo viera o no
-     quien entra. Se pide solo cuando Marca personal está a punto de
-     entrar en pantalla: menos peticiones a TikTok en cada carga, que es
-     justo lo que puede disparar su propia protección "overload-protect"
-     cuando hay demasiadas de golpe. Sin IntersectionObserver (navegador
-     muy viejo) se carga de una: sin JS el enlace real del blockquote
-     sigue funcionando igual, así que no hay nada que degradar de más. */
-  const personalSection = document.getElementById('personal');
-  if (personalSection && personalSection.querySelector('.tiktok-embed')) {
-    /* El blockquote mide 344px y el embed ya renderizado 757px. Ese salto
-       ocurre con la página cargada y empuja hacia abajo todo lo que va
-       después de Marca personal, así que un scroll de nav que haya
-       terminado antes queda corto por esa misma diferencia. La reserva se
-       pone AQUÍ, al arrancar, y no dentro de `loadTiktokEmbed()`: el
-       observador no dispara hasta que uno se acerca a la sección, y para
-       entonces reservar y renderizar caen a la vez — que es justo el salto
-       que se quiere evitar. Sin JS no se pone nada y la tarjeta se queda
-       con su alto natural; si el script no llega, se libera. */
-    const track = personalSection.querySelector('.personal__track');
-    if (track) track.classList.add('is-reserved');
+  /* ---------- Marca personal: el embed se monta al hacer clic ----------
+     Cada tarjeta es una fachada —portada propia servida desde
+     `assets/tiktok/` y un enlace de verdad al video—, igual que la portada
+     de la presentación. El iframe de TikTok se monta aquí mismo al pulsar,
+     y solo el pulsado.
 
-    const loadTiktokEmbed = () => {
-      if (document.querySelector('script[data-tiktok-embed]')) return;
-      const s = document.createElement('script');
-      s.src = 'https://www.tiktok.com/embed.js';
-      s.async = true;
-      s.dataset.tiktokEmbed = 'true';
-      s.addEventListener('error', () => { if (track) track.classList.remove('is-reserved'); });
-      document.body.appendChild(s);
+     Por qué, y no cargándolos solos: TikTok limita cuántos embeds sirve a
+     un mismo cliente y, pasado el cupo, devuelve dentro de su iframe el
+     cartel "overload-protect triggered" en vez del video. El cupo es
+     móvil —se agota con el uso y se repone con el tiempo—, así que no hay
+     número de tarjetas ni reparto en el tiempo que lo evite: medido, ni
+     espaciar los siete 3 segundos cambiaba nada. Lo único que el sitio
+     controla es **cuántos gasta**, y una visita normal pasa de gastar
+     siete a gastar cero. El cartel lo pinta TikTok dentro de un iframe de
+     otro origen: no se puede leer ni reintentar desde aquí.
+
+     `embed.js` tampoco se carga ya: construía este mismo iframe, pero los
+     siete de golpe y sin forma de impedírselo.
+
+     La cola existe para el caso de quien pulsa varias tarjetas seguidas:
+     el siguiente iframe no se pide hasta que el anterior cargó. `TOPE`
+     está porque un iframe de otro origen puede no disparar `load` nunca. */
+  const personalSection = document.getElementById('personal');
+  if (personalSection) {
+    const ESPERA = 400;
+    const TOPE = 8000;
+    const cola = [];
+    let ocupado = false;
+
+    const drenar = () => {
+      if (ocupado || !cola.length) return;
+      ocupado = true;
+      montar(cola.shift());
     };
-    if ('IntersectionObserver' in window) {
-      const io = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) { loadTiktokEmbed(); io.disconnect(); }
-        });
-      }, { rootMargin: '600px 0px' });
-      io.observe(personalSection);
-    } else {
-      loadTiktokEmbed();
+    const terminado = () => {
+      ocupado = false;
+      setTimeout(drenar, ESPERA);
+    };
+
+    function montar(cover) {
+      const card = cover.closest('.personal__card');
+      const id = cover.dataset.videoId;
+      if (!card || !id) { terminado(); return; }
+
+      const frame = document.createElement('iframe');
+      frame.className = 'personal__frame';
+      frame.src = 'https://www.tiktok.com/embed/v2/' + encodeURIComponent(id) +
+        '?lang=' + encodeURIComponent(document.documentElement.lang || 'es') +
+        '&referrer=' + encodeURIComponent(location.href);
+      frame.title = 'Video de @camilocreativo0 en TikTok';
+      // El mismo sandbox que ponía `embed.js`: el reproductor necesita
+      // scripts y poder abrir TikTok en una pestaña nueva, nada más.
+      frame.setAttribute('sandbox',
+        'allow-popups allow-popups-to-escape-sandbox allow-scripts allow-top-navigation allow-same-origin');
+      frame.setAttribute('allow', 'encrypted-media; picture-in-picture; fullscreen');
+
+      let seguido = false;
+      const seguir = () => {
+        if (seguido) return;
+        seguido = true;
+        clearTimeout(reloj);
+        terminado();
+      };
+      const reloj = setTimeout(seguir, TOPE);
+      frame.addEventListener('load', () => {
+        // Recién aquí se tapa la portada. Si TikTok no responde nunca, lo
+        // que queda a la vista es la portada con su enlace, no una caja.
+        card.classList.add('is-ready');
+        seguir();
+      });
+
+      card.appendChild(frame);
     }
+
+    personalSection.querySelectorAll('.personal__cover').forEach(cover => {
+      cover.addEventListener('click', e => {
+        const card = cover.closest('.personal__card');
+        if (!card || card.dataset.montada) return;   // ya pulsada: deja pasar nada
+        e.preventDefault();
+        card.dataset.montada = '1';
+        card.classList.add('is-loading');
+        cola.push(cover);
+        drenar();
+      });
+    });
   }
 
   /* ---------- Toast ---------- */
