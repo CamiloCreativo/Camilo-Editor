@@ -1,77 +1,11 @@
 (() => {
   'use strict';
 
-  /* =========================================================
-     CONTENIDO DEL PORTAFOLIO
-     Para agregar una nueva categoría, copia un objeto del
-     arreglo "categories" y ajústalo. Para agregar un video,
-     copia un objeto dentro de "videos".
-     - embed: URL de YouTube/Vimeo (déjalo vacío "" si aún no hay video)
-     - thumbnail: URL de una imagen de portada (opcional). Para YouTube puedes
-       dejarlo vacío o pegar el mismo link que en "embed": la miniatura oficial
-       se genera sola.
-     - orientation: "portrait" (Reels/Shorts) o "landscape" (narrativos)
-     - tags: arreglo de etiquetas del video (puedes poner una o varias),
-       por ejemplo: tags: ['Publicidad', 'Motion Graphics']
-     - highlight: opcional. Texto corto para resaltar un dato de la pieza
-       (por ejemplo, vistas por día). Déjalo fuera del objeto si no aplica.
-     ========================================================= */
-  const categories = [
-    {
-      id: 'Reels',
-      title: 'Videos cortos (Reels/Shorts)',
-      description: 'Producciones rápidas y entretenidas, pensadas para captar la atención en segundos y generar interacción en redes sociales.',
-      videos: [
-        { title: '¿Es rentable una gasolinera en Madrid?', tags: ['Finanzas'], orientation: 'portrait', embed: 'https://youtube.com/shorts/R3L4cnzVVWE', thumbnail: 'https://youtube.com/shorts/R3L4cnzVVWE' },
-        { title: 'Arranca con tu emprendimiento', tags: ['Emprendimiento'], orientation: 'portrait', embed: 'https://youtube.com/shorts/IDysYdCRWuU?feature=share', thumbnail: 'https://youtube.com/shorts/IDysYdCRWuU?feature=share' },
-        { title: 'El mejor lavadero de motos', tags: ['Publicidad'], orientation: 'portrait', embed: 'https://youtube.com/shorts/6aBTwmZmMes', thumbnail: 'https://youtube.com/shorts/6aBTwmZmMes' }
-      ]
-    },
-    {
-      id: 'dinamicos',
-      title: 'Videos dinámicos',
-      description: 'Ediciones ágiles con ritmo acelerado, cortes rápidos y transiciones dinámicas, pensadas para captar la atención en segundos en redes sociales y contenido publicitario.',
-      videos: [
-        { title: 'Así edito mis videos', tags: ['Publicidad'], orientation: 'landscape', embed: 'https://youtu.be/gMqMnTWsiio?si=JRTznDsGsRYpDGVN', thumbnail: 'https://youtu.be/gMqMnTWsiio?si=JRTznDsGsRYpDGVN' }
-      ]
-    },
-    {
-      id: 'narrativos',
-      title: 'Videos narrativos',
-      description: 'Producciones con ritmo narrativo, pensadas para mantener la atención del espectador y transmitir mensajes claros en formatos más largos.',
-      videos: [
-        { title: 'Introspección de un rodaje', tags: ['Mini documental', 'Ficción', 'Cine'], orientation: 'landscape', embed: 'https://youtu.be/HvZB4duQxyM?si=-sdYFZnEhtfPqyg2', thumbnail: 'https://youtu.be/HvZB4duQxyM?si=-sdYFZnEhtfPqyg2' },
-        { title: 'Carnotaurus: El Último Gran Depredador de Sudamérica', tags: ['Mini documental', 'Faceless'], orientation: 'landscape', embed: 'https://youtu.be/jXqpq4qKemk?si=0qUZVyJCh6bg7U-w', thumbnail: 'https://youtu.be/jXqpq4qKemk?si=0qUZVyJCh6bg7U-w', highlight: '+100 mil vistas/día en sus primeros días' }
-      ]
-    },
-    {
-      id: 'crecimiento',
-      title: 'Videos de crecimiento personal',
-      description: 'Producciones con ritmo entretenido pero serio, pensadas en comunicar contenido de alto valor y al mismo tiempo manteniendo la retención',
-      videos: [
-        { title: 'La dieta más fácil del mundo para eliminar grasa visceral', tags: ['Salud', 'Alimentación', 'Emprendimiento', 'Producido con ayuda de IA'], orientation: 'landscape', embed: 'https://youtu.be/SlgukfstmI0', thumbnail: 'https://youtu.be/SlgukfstmI0' }
-      ]
-    }
-    // Agrega aquí nuevas categorías siguiendo el mismo formato.
-  ];
-
   /* Oficios del ticker (sustituye a las píldoras de skills) */
   const oficios = [
     'Edición de video', 'DaVinci Resolve', 'Motion graphics', 'Corrección de sonido',
     'Corrección de color', 'Storytelling', 'Reels', 'Documentales', 'IA'
   ];
-
-  /* ---------- Estado de filtros ---------- */
-  const filterState = { category: 'all', tag: 'all' };
-
-  function getTagsForCategory(categoryId) {
-    const relevant = categoryId === 'all' ? categories : categories.filter(c => c.id === categoryId);
-    const tagSet = new Set();
-    relevant.forEach(c => c.videos.forEach(v => (v.tags || []).forEach(t => tagSet.add(t))));
-    return Array.from(tagSet);
-  }
-
-  const playIconSVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg>';
 
   /* ---------- Utilidades ---------- */
   function extractYouTubeId(url) {
@@ -91,23 +25,8 @@
     return url;
   }
 
-  /* La miniatura se elige por ORIENTACIÓN, no por defecto.
-     Medido contra la API de YouTube:
-       oardefault.jpg    -> 1080x1920 (9:16 real) en Shorts · 120x90 inservible en apaisados
-       maxresdefault.jpg -> 1280x720  (16:9 real) siempre
-       hqdefault.jpg     -> 480x360   (4:3) CON BARRAS NEGRAS incrustadas
-     Usar hqdefault para todo era la causa de que las piezas se vieran
-     cuadradas y con marco negro. */
-  function resolveThumbnail(video) {
-    const ytId = extractYouTubeId(video.thumbnail) || extractYouTubeId(video.embed);
-    if (!ytId) return video.thumbnail || '';
-    const ep = (video.orientation === 'portrait') ? 'oardefault' : 'maxresdefault';
-    return 'https://img.youtube.com/vi/' + ytId + '/' + ep + '.jpg';
-  }
-
   /* Cuando el endpoint elegido no existe para ese video, la imagen se cae a
-     `data-fallback`. Lo usan las piezas del mazo y la portada de la presentación,
-     así que vive suelto en vez de dentro de renderDeck(). */
+     `data-fallback`. Lo usa la portada de la presentación en video. */
   function wireThumbFallback(imgs) {
     imgs.forEach(img => {
       img.addEventListener('error', function onFail() {
@@ -118,73 +37,14 @@
     });
   }
 
-  /* Si el endpoint bueno no existe para ese video, se cae a hqdefault. */
-  function fallbackThumb(video) {
-    const ytId = extractYouTubeId(video.thumbnail) || extractYouTubeId(video.embed);
-    return ytId ? 'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg' : '';
-  }
-
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
     ));
   }
 
-  /* Aplana las categorías en una sola lista: el diseño usa UN carrusel,
-     no uno por categoría. Con 6 piezas y tres categorías de una sola,
-     cuatro carruseles serían cuatro carruseles vacíos. */
-  const pieces = [];
-  categories.forEach(cat => {
-    cat.videos.forEach(v => pieces.push({ ...v, category: cat.id }));
-  });
-
-  /* ---------- Render ---------- */
-  const deckEl = document.getElementById('workDeck');
-  const filtersEl = document.getElementById('portfolioFilters');
-  const tagFiltersEl = document.getElementById('portfolioTagFilters');
-  const noteEl = document.getElementById('workNote');
-  const titlesEl = document.getElementById('workTitles');
+  /* ---------- Ticker de oficios (vive en Proceso) ---------- */
   const tickerEl = document.getElementById('tickerRow');
-
-  function renderDeck() {
-    if (!deckEl) return;
-
-    deckEl.innerHTML = pieces.map((v, i) => {
-      const thumbUrl = resolveThumbnail(v);
-      const tags = v.tags || [];
-      // <button> nativo: el sitio anterior usaba article[role=button][tabindex=0]
-      // con un único listener de click, así que con teclado se podía enfocar
-      // pero NO activar. Esto lo arregla de raíz.
-      return '<button class="piece" type="button"' +
-        ' data-category="' + esc(v.category) + '"' +
-        ' data-tags="' + esc(tags.join('|')) + '"' +
-        ' data-embed="' + esc(v.embed || '') + '"' +
-        ' data-orientation="' + esc(v.orientation || 'portrait') + '"' +
-        ' data-index="' + i + '"' +
-        ' aria-label="Reproducir: ' + esc(v.title) + '">' +
-        '<span class="piece__thumb">' +
-          (thumbUrl ? '<img src="' + esc(thumbUrl) + '" alt="" loading="lazy" data-fallback="' + esc(fallbackThumb(v)) + '">' : '') +
-          '<span class="piece__play">' + playIconSVG + '</span>' +
-        '</span>' +
-        '<span class="piece__meta">' +
-          '<span class="piece__name">' + esc(v.title) + '</span>' +
-          (tags.length ? '<span class="piece__tags">' + esc(tags.join(' · ')) + '</span>' : '') +
-          (v.highlight ? '<span class="piece__highlight">' + esc(v.highlight) + '</span>' : '') +
-        '</span>' +
-      '</button>';
-    }).join('');
-
-    deckEl.querySelectorAll('.piece').forEach(el => {
-      el.addEventListener('click', () => onPieceClick(el));
-    });
-
-    wireThumbFallback(deckEl.querySelectorAll('.piece__thumb img'));
-  }
-
-  function renderTitles() {
-    if (!titlesEl) return;
-    titlesEl.innerHTML = pieces.map(v => '<li>' + esc(v.title) + '</li>').join('');
-  }
 
   function renderTicker() {
     if (!tickerEl) return;
@@ -193,230 +53,13 @@
     tickerEl.innerHTML = once + once;
   }
 
-  function renderFilters() {
-    if (!filtersEl) return;
-    const buttons = [{ id: 'all', title: 'Todo' }].concat(categories.map(c => ({ id: c.id, title: c.title })));
-    filtersEl.innerHTML = buttons.map((f, i) =>
-      '<button class="filter' + (i === 0 ? ' is-active' : '') + '" type="button"' +
-      ' data-filter="' + esc(f.id) + '" aria-pressed="' + (i === 0) + '">' + esc(f.title) + '</button>'
-    ).join('');
-
-    filtersEl.querySelectorAll('.filter').forEach(btn => {
-      btn.addEventListener('click', () => setCategoryFilter(btn.dataset.filter));
-    });
-    renderTagFilters();
-    updateNote();
-  }
-
-  function renderTagFilters() {
-    if (!tagFiltersEl) return;
-    const tags = getTagsForCategory(filterState.category);
-    if (!tags.length) {
-      tagFiltersEl.innerHTML = '';
-      tagFiltersEl.classList.add('is-empty');
-      return;
-    }
-    tagFiltersEl.classList.remove('is-empty');
-
-    const buttons = [{ id: 'all', title: 'Todas las etiquetas' }].concat(tags.map(t => ({ id: t, title: t })));
-    tagFiltersEl.innerHTML = buttons.map(t =>
-      '<button class="filter filter--tag' + (t.id === filterState.tag ? ' is-active' : '') + '" type="button"' +
-      ' data-tag="' + esc(t.id) + '" aria-pressed="' + (t.id === filterState.tag) + '">' + esc(t.title) + '</button>'
-    ).join('');
-
-    tagFiltersEl.querySelectorAll('.filter').forEach(btn => {
-      btn.addEventListener('click', () => setTagFilter(btn.dataset.tag));
-    });
-  }
-
-  /* La descripción de cada categoría no se pierde con el carrusel único:
-     aparece aquí cuando esa categoría está activa. */
-  function updateNote() {
-    if (!noteEl) return;
-    const cat = categories.find(c => c.id === filterState.category);
-    const visibles = countVisible();
-    const cuenta = visibles + (visibles === 1 ? ' pieza' : ' piezas');
-    noteEl.textContent = cat ? cat.description + ' — ' + cuenta : cuenta + ' en total.';
-  }
-
-  function countVisible() {
-    return pieces.filter(v => {
-      const okCat = filterState.category === 'all' || v.category === filterState.category;
-      const okTag = filterState.tag === 'all' || (v.tags || []).includes(filterState.tag);
-      return okCat && okTag;
-    }).length;
-  }
-
-  /* ---------- Filtros ---------- */
-  function setCategoryFilter(categoryId) {
-    filterState.category = categoryId;
-    filterState.tag = 'all';
-    if (filtersEl) {
-      filtersEl.querySelectorAll('.filter').forEach(b => {
-        const on = b.dataset.filter === categoryId;
-        b.classList.toggle('is-active', on);
-        b.setAttribute('aria-pressed', String(on));
-      });
-    }
-    renderTagFilters();
-    applyFilters();
-  }
-
-  function setTagFilter(tag) {
-    filterState.tag = tag;
-    if (tagFiltersEl) {
-      tagFiltersEl.querySelectorAll('.filter').forEach(b => {
-        const on = b.dataset.tag === tag;
-        b.classList.toggle('is-active', on);
-        b.setAttribute('aria-pressed', String(on));
-      });
-    }
-    applyFilters();
-  }
-
-  function applyFilters() {
-    const mutate = () => {
-      if (!deckEl) return;
-      deckEl.querySelectorAll('.piece').forEach(card => {
-        const cardTags = (card.dataset.tags || '').split('|').filter(Boolean);
-        const okCat = filterState.category === 'all' || card.dataset.category === filterState.category;
-        const okTag = filterState.tag === 'all' || cardTags.includes(filterState.tag);
-        card.hidden = !(okCat && okTag);
-      });
-      updateNote();
-    };
-
-    // Si motion.js está vivo, deja que Flip anime el reacomodo.
-    // Si no, el cambio es instantáneo pero igual de correcto.
-    if (window.CCMotion && typeof window.CCMotion.reflow === 'function') {
-      window.CCMotion.reflow(mutate);
-    } else {
-      mutate();
-    }
-    railRefresh();
-  }
-
-  /* ---------- Carrusel móvil ----------
-     Debajo de 768px el mazo no es un abanico: es una tira que corre de
-     izquierda a derecha, anclada al borde izquierdo. Esto vive aquí y no
-     en motion.js a propósito — si el CDN de GSAP cae, el carrusel tiene
-     que seguir funcionando.
-
-     El mando nace `hidden` en el HTML y se destapa desde aquí: sin JS no
-     aparecen flechas que no llevan a ninguna parte. */
-  const railEl = document.getElementById('workRail');
-  const dotsEl = document.getElementById('workDots');
-  const mqRail = window.matchMedia('(max-width: 768px)');
-  let railTick = false;
-
-  function visiblePieces() {
-    if (!deckEl) return [];
-    return Array.from(deckEl.querySelectorAll('.piece')).filter(el => !el.hidden);
-  }
-
-  function deckPadLeft() {
-    return deckEl ? (parseFloat(getComputedStyle(deckEl).paddingLeft) || 0) : 0;
-  }
-
-  /* La pieza anclada es la más cercana a la línea de anclaje —borde
-     izquierdo más padding—. Se mide con rects y no con offsetLeft: dentro
-     de un contenedor con scroll, offsetLeft cambia de origen según quién
-     esté posicionado, y devuelve números que no significan lo mismo. */
-  function railIndex() {
-    const list = visiblePieces();
-    if (!deckEl || !list.length) return 0;
-    const linea = deckEl.getBoundingClientRect().left + deckPadLeft();
-    let idx = 0, mejor = Infinity;
-    list.forEach((el, i) => {
-      const d = Math.abs(el.getBoundingClientRect().left - linea);
-      if (d < mejor) { mejor = d; idx = i; }
-    });
-    return idx;
-  }
-
-  function railGo(i) {
-    const list = visiblePieces();
-    if (!deckEl || !list.length) return;
-    const el = list[Math.max(0, Math.min(list.length - 1, i))];
-    const x = deckEl.scrollLeft
-      + el.getBoundingClientRect().left - deckEl.getBoundingClientRect().left
-      - deckPadLeft();
-    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    deckEl.scrollTo({ left: Math.max(0, x), behavior: suave ? 'smooth' : 'auto' });
-  }
-
-  function renderDots() {
-    if (!dotsEl) return;
-    dotsEl.innerHTML = visiblePieces().map((el, i) => {
-      const name = el.querySelector('.piece__name');
-      const label = name ? name.textContent : ('la pieza ' + (i + 1));
-      return '<button class="rail__dot" type="button" data-go="' + i +
-        '" aria-label="Ir a ' + esc(label) + '"></button>';
-    }).join('');
-    dotsEl.querySelectorAll('.rail__dot').forEach(btn => {
-      btn.addEventListener('click', () => railGo(Number(btn.dataset.go)));
-    });
-  }
-
-  function railSync() {
-    if (!railEl || !deckEl || railEl.hidden) return;
-    const activo = railIndex();
-    if (dotsEl) {
-      dotsEl.querySelectorAll('.rail__dot').forEach((d, k) => {
-        d.classList.toggle('is-on', k === activo);
-        if (k === activo) d.setAttribute('aria-current', 'true');
-        else d.removeAttribute('aria-current');
-      });
-    }
-    const prev = railEl.querySelector('[data-rail="prev"]');
-    const next = railEl.querySelector('[data-rail="next"]');
-    // El tope se mide por scroll, no por índice: la última pieza puede no
-    // llegar nunca a la línea de anclaje y estar aun así entera a la vista.
-    const fin = deckEl.scrollLeft + deckEl.clientWidth >= deckEl.scrollWidth - 4;
-    if (prev) prev.disabled = deckEl.scrollLeft <= 4;
-    if (next) next.disabled = fin;
-  }
-
-  /* Cambió el filtro o el ancho: otras piezas, otros puntos, y la tira
-     vuelve al principio. Con una sola pieza visible el mando sobra. */
-  function railRefresh() {
-    if (!railEl) return;
-    railEl.hidden = !mqRail.matches || visiblePieces().length < 2;
-    renderDots();
-    if (!railEl.hidden && deckEl) deckEl.scrollTo({ left: 0, behavior: 'auto' });
-    railSync();
-  }
-
-  function railInit() {
-    if (!railEl || !deckEl) return;
-
-    railEl.querySelectorAll('[data-rail]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        railGo(railIndex() + (btn.dataset.rail === 'next' ? 1 : -1));
-      });
-    });
-
-    deckEl.addEventListener('scroll', () => {
-      if (railTick) return;
-      railTick = true;
-      requestAnimationFrame(() => { railTick = false; railSync(); });
-    }, { passive: true });
-
-    // Safari viejo no tiene addEventListener en MediaQueryList.
-    if (mqRail.addEventListener) mqRail.addEventListener('change', railRefresh);
-    else if (mqRail.addListener) mqRail.addListener(railRefresh);
-    window.addEventListener('resize', railSync, { passive: true });
-
-    railRefresh();
-  }
-
   /* ---------- Mando del slider de Marca personal ----------
-     Mismo mando visual que el carrusel móvil del portafolio
-     (.rail__arrow/.rail__dots/.rail__dot), pero sin la condición de los
-     768px: con cinco tarjetas hace falta también en escritorio, donde
-     nada en un mouse sugiere que `.personal__track` se desliza. Sin
-     filtros que seguir —la lista de tarjetas es fija—, así que el
-     controlador es más simple que `railInit()`. */
+     Flechas y puntos (.rail__arrow/.rail__dots/.rail__dot) visibles en
+     todos los anchos: con siete tarjetas ni el arrastre táctil ni el
+     scroll con shift son evidentes, y en escritorio nada en un mouse
+     sugiere que `.personal__track` se desliza. La lista de tarjetas es
+     fija —no hay filtros que seguir—, así que el controlador no necesita
+     refrescarse: se arma una vez al arrancar. */
   const personalTrackEl = document.querySelector('.personal__track');
   const personalRailEl = document.getElementById('personalRail');
   const personalDotsEl = document.getElementById('personalDots');
@@ -495,43 +138,6 @@
 
     personalRailSync();
   }
-
-  /* ---------- Modal ---------- */
-  const modal = document.getElementById('videoModal');
-  const modalVideo = document.getElementById('modalVideo');
-  let lastFocused = null;
-
-  function openModal(embedUrl) {
-    if (!modal || !modalVideo) return;
-    lastFocused = document.activeElement;
-    modalVideo.innerHTML = '<iframe src="' + toEmbedUrl(embedUrl) + '" title="Reproductor de video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
-    modal.classList.add('is-open');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-    const close = modal.querySelector('.modal__close');
-    if (close) close.focus();
-  }
-
-  function closeModal() {
-    if (!modal || !modalVideo) return;
-    modal.classList.remove('is-open');
-    modal.setAttribute('aria-hidden', 'true');
-    modalVideo.innerHTML = '';
-    document.body.style.overflow = '';
-    if (lastFocused && lastFocused.focus) lastFocused.focus();
-  }
-
-  function onPieceClick(card) {
-    const embed = card.dataset.embed;
-    if (embed) {
-      openModal(embed);
-    } else {
-      const name = card.querySelector('.piece__name');
-      showToast('"' + (name ? name.textContent : 'Esta pieza') + '" próximamente');
-    }
-  }
-
-  document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeModal));
 
   /* ---------- Calculadora de precios ----------
      PRICING es un espejo de la tabla #precios de index.html. Si esa tabla
@@ -1428,12 +1034,11 @@
   document.querySelectorAll('[data-details-confirm]').forEach(btn => btn.addEventListener('click', confirmAndSend));
   document.querySelectorAll('[data-close-details]').forEach(el => el.addEventListener('click', closeDetailsModal));
 
-  /* Escape y el atrapa-foco valen para el modal que esté abierto —video,
-     calculadora o detalles—: solo puede haber uno a la vez, porque el
-     fondo del que está abierto bloquea el clic al disparador de los
-     otros dos. */
+  /* Escape y el atrapa-foco valen para el modal que esté abierto
+     —calculadora o detalles—: solo puede haber uno a la vez, porque el
+     fondo del que está abierto bloquea el clic al disparador del otro.
+     Un modal nuevo se agrega aquí; no se vuelve a una cadena de `if`. */
   const modalRegistry = [
-    { el: modal, close: closeModal },
     { el: calcModal, close: closeCalcModal },
     { el: detailsModal, close: closeDetailsModal }
   ];
@@ -1489,12 +1094,25 @@
      sigue funcionando igual, así que no hay nada que degradar de más. */
   const personalSection = document.getElementById('personal');
   if (personalSection && personalSection.querySelector('.tiktok-embed')) {
+    /* El blockquote mide 344px y el embed ya renderizado 757px. Ese salto
+       ocurre con la página cargada y empuja hacia abajo todo lo que va
+       después de Marca personal, así que un scroll de nav que haya
+       terminado antes queda corto por esa misma diferencia. La reserva se
+       pone AQUÍ, al arrancar, y no dentro de `loadTiktokEmbed()`: el
+       observador no dispara hasta que uno se acerca a la sección, y para
+       entonces reservar y renderizar caen a la vez — que es justo el salto
+       que se quiere evitar. Sin JS no se pone nada y la tarjeta se queda
+       con su alto natural; si el script no llega, se libera. */
+    const track = personalSection.querySelector('.personal__track');
+    if (track) track.classList.add('is-reserved');
+
     const loadTiktokEmbed = () => {
       if (document.querySelector('script[data-tiktok-embed]')) return;
       const s = document.createElement('script');
       s.src = 'https://www.tiktok.com/embed.js';
       s.async = true;
       s.dataset.tiktokEmbed = 'true';
+      s.addEventListener('error', () => { if (track) track.classList.remove('is-reserved'); });
       document.body.appendChild(s);
     };
     if ('IntersectionObserver' in window) {
@@ -1571,15 +1189,7 @@
   if (yearEl) yearEl.textContent = new Date().getFullYear();
 
   /* ---------- Arranque ---------- */
-  renderDeck();
-  renderTitles();
   renderTicker();
-  renderFilters();
-  railInit();
   personalRailInit();
   onScroll();
-
-  /* motion.js consume esto. Si motion.js no llega a correr,
-     nada de lo de arriba se rompe. */
-  window.CCData = { pieces, categories, deckEl };
 })();

@@ -33,11 +33,10 @@
 
     <button class="nav__toggle" id="navToggle" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="navLinks">
       <span></span><span></span>
-    </button> ,
+    </button>
 
     <nav class="nav__links" id="navLinks" aria-label="Principal">
       <a href="#inicio" class="nav__link">Inicio</a>
-      <a href="#portafolio" class="nav__link">Trabajo</a>
       <a href="#personal" class="nav__link">Personal</a>
       <a href="#perfil" class="nav__link">Proceso</a>
       <!-- El aviso es CSS puro (sin :hover) para que se vea igual en
@@ -124,67 +123,49 @@
         <!-- Hermano del reproductor, no hijo del texto: al apilarse en móvil
              la flecha tiene que quedar DEBAJO del video. Arriba invitaría a
              saltarse justo lo que la sección viene a enseñar. -->
-        <a href="#portafolio" class="pitch__cue">
-          <span>Ver el trabajo</span>
+        <a href="#personal" class="pitch__cue">
+          <span>Ver lo que edito</span>
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v15m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
       </div>
     </section>
 
-    <!-- ===== PORTAFOLIO ===== -->
-    <section id="portafolio" class="work">
-      <div class="work__stage" id="workStage">
-        <h2 class="work__title" data-split>El trabajo</h2>
-
-        <!-- Marco fijo por el que desfilan las piezas (fase 1) -->
-        <div class="work__frame" id="workFrame" aria-hidden="true"></div>
-
-        <!-- Lista de títulos que se resalta con el desfile (fase 1) -->
-        <ol class="work__titles" id="workTitles" aria-hidden="true"></ol>
-
-        <!-- Las tarjetas: desfilan, se dispersan y se acomodan en abanico -->
-        <div class="work__deck" id="workDeck"></div>
-
-        <!-- Mando del carrusel móvil. Nace oculto y script.js lo destapa:
-             sin JS no aparecen flechas que no llevan a ninguna parte.
-             En escritorio el CSS lo mantiene fuera: allí manda el abanico. -->
-        <div class="work__rail" id="workRail" hidden>
-          <button class="rail__arrow" type="button" data-rail="prev" aria-label="Pieza anterior">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="rail__dots" id="workDots" role="group" aria-label="Ir a una pieza"></div>
-          <button class="rail__arrow" type="button" data-rail="next" aria-label="Pieza siguiente">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="work__controls">
-        <div class="filters" id="portfolioFilters" role="group" aria-label="Filtrar por tipo"></div>
-        <div class="filters filters--tag" id="portfolioTagFilters" role="group" aria-label="Filtrar por etiqueta"></div>
-        <p class="work__note" id="workNote"></p>
-      </div>
-    </section>
-
     <!-- ===== MARCA PERSONAL =====
-         Distinta del portafolio a propósito: el portafolio enseña encargos,
-         esto enseña cómo suena Camilo sin cliente de por medio. Embed
-         oficial de TikTok (blockquote + embed.js): sin JS el enlace al
-         perfil sigue funcionando, igual que la fachada de la presentación. -->
+         Desde el 2026-09-24 es la única vitrina de piezas del sitio: el
+         portafolio de encargos se retiró porque su nivel ya no es el de
+         Camilo hoy. Embed oficial de TikTok (blockquote + embed.js): sin
+         JS el enlace al perfil sigue funcionando, igual que la fachada de
+         la presentación. -->
     <section id="personal" class="personal">
       <div class="personal__inner">
         <div class="personal__text">
           <h2 class="personal__title" data-split>Marca personal</h2>
           <p class="personal__line">
-            El portafolio muestra encargos. Aquí subo lo que edito para mí —
-            así sueno sin cliente de por medio.
+            Lo que edito para mí, sin cliente de por medio. Es lo más
+            reciente que he hecho y así es como sueno.
           </p>
         </div>
 
-        <!-- Slider horizontal, no rejilla: en vertical las tres tarjetas
+        <!-- Slider horizontal, no rejilla: en vertical las tarjetas
              juntas se comían demasiado alto de página, sobre todo en móvil.
-             Orden: más reciente primero. -->
+             Orden: más reciente primero, por ID de TikTok descendente. -->
         <div class="personal__track">
+          <div class="personal__card">
+            <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@camilocreativo0/video/7688092211640012039" data-video-id="7688092211640012039" style="max-width: 325px; min-width: 260px;">
+              <section>
+                <a target="_blank" rel="noopener noreferrer" title="@camilocreativo0" href="https://www.tiktok.com/@camilocreativo0?refer=embed">@camilocreativo0</a>
+              </section>
+            </blockquote>
+          </div>
+
+          <div class="personal__card">
+            <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@camilocreativo0/video/7686933334974401800" data-video-id="7686933334974401800" style="max-width: 325px; min-width: 260px;">
+              <section>
+                <a target="_blank" rel="noopener noreferrer" title="@camilocreativo0" href="https://www.tiktok.com/@camilocreativo0?refer=embed">@camilocreativo0</a>
+              </section>
+            </blockquote>
+          </div>
+
           <div class="personal__card">
             <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@camilocreativo0/video/7685807916795972882" data-video-id="7685807916795972882" style="max-width: 325px; min-width: 260px;">
               <section>
@@ -226,12 +207,10 @@
           </div>
         </div>
 
-        <!-- Mando del slider, en escritorio y en móvil: con cinco tarjetas
+        <!-- Mando del slider, en escritorio y en móvil: con siete tarjetas
              ni el arrastre táctil ni el scroll con shift son evidentes.
              Nace oculto, script.js lo destapa — sin JS no aparecen flechas
-             que no llevan a ninguna parte. Reutiliza .rail__arrow/.rail__dot
-             del carrusel móvil del portafolio, sin la condición de los
-             768px: aquí hace falta en todos los anchos. -->
+             que no llevan a ninguna parte. -->
         <div class="personal__rail" id="personalRail" hidden>
           <button class="rail__arrow" type="button" data-personal-rail="prev" aria-label="Video anterior">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -482,17 +461,6 @@
     <span>Juan Camilo Navia Castrillón · <span id="year"></span></span>
     <a href="#inicio" class="foot__top">Volver arriba</a>
   </footer>
-
-  <!-- ===== MODAL DE VIDEO ===== -->
-  <div class="modal" id="videoModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Reproductor de video">
-    <div class="modal__backdrop" data-close></div>
-    <div class="modal__content">
-      <button class="modal__close" data-close aria-label="Cerrar video">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-      </button>
-      <div class="modal__video" id="modalVideo"></div>
-    </div>
-  </div>
 
   <!-- ===== MODAL DE LA CALCULADORA =====
        Los números aquí dentro (PRICING en script.js) son un espejo de la
@@ -760,7 +728,6 @@
        un release futuro no puede romper el sitio en silencio. -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/Flip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollToPlugin.min.js"></script>
 

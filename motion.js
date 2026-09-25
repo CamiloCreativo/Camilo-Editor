@@ -1,6 +1,6 @@
 /* =========================================================
    CAMILO CREATIVO — coreografía
-   GSAP 3.15.0 · ScrollTrigger · Flip · SplitText
+   GSAP 3.15.0 · ScrollTrigger · SplitText
 
    REGLA DE ORO: este archivo APLICA los estados iniciales.
    El CSS ya entrega la página final y legible. Si esto no
@@ -18,14 +18,8 @@
   if (reduce || !hasGSAP) return;
 
   gsap.registerPlugin(ScrollTrigger);
-  if (window.Flip) gsap.registerPlugin(Flip);
   if (window.SplitText) gsap.registerPlugin(SplitText);
   if (window.ScrollToPlugin) gsap.registerPlugin(ScrollToPlugin);
-
-  const deck = document.getElementById('workDeck');
-  const stage = document.getElementById('workStage');
-  const frame = document.getElementById('workFrame');
-  const titles = document.getElementById('workTitles');
 
   /* Dispersión determinista: la misma pieza cae siempre en el mismo
      sitio. Con Math.random() el hero cambiaría en cada recarga. */
@@ -161,253 +155,6 @@
   }
 
   /* =======================================================
-     TRABAJO — desfile, dispersión y abanico
-     ======================================================= */
-  /* Reparte las piezas alternando orientación. Sin esto salen las tres
-     verticales juntas y luego las tres apaisadas, y el arco queda con un
-     bloque alto y otro bajo en vez de tener ritmo. */
-  function intercalar(list) {
-    const v = list.filter(e => e.dataset.orientation !== 'landscape');
-    const h = list.filter(e => e.dataset.orientation === 'landscape');
-    const out = [];
-    while (v.length || h.length) {
-      if (v.length) out.push(v.shift());
-      if (h.length) out.push(h.shift());
-    }
-    return out;
-  }
-
-  function fanCoords(list) {
-    const out = [];
-    const n = list.length;
-    if (!n) return out;
-
-    const W = deck.clientWidth;
-    const H = deck.clientHeight;
-    const ws = list.map(el => el.offsetWidth || 200);
-    const hs = list.map(el => el.offsetHeight || 300);
-
-    // Todas comparten ancho, así que el avance es uniforme.
-    const solape = 0.72;
-    const avance = ws.map(w => w * solape);
-    let total = ws[n - 1];
-    for (let i = 0; i < n - 1; i++) total += avance[i];
-
-    // Margen real de seguridad: la rotación ensancha la huella.
-    const disponible = W - 90;
-    const k = total > disponible ? disponible / total : 1;
-
-    let x = (W - total * k) / 2;
-    const eje = H / 2;
-
-    list.forEach((el, i) => {
-      const mid = (n - 1) / 2;
-      const u = n === 1 ? 0 : (i - mid) / mid;      // -1 .. 1
-      out.push({
-        x: x,
-        // Cada pieza se centra en el MISMO eje pese a tener alturas
-        // distintas: si no, las apaisadas quedarían colgando arriba.
-        y: eje - hs[i] / 2 + u * u * 52,
-        rotation: u * 7.5,
-        z: 100 - Math.round(Math.abs(u) * 40)
-      });
-      x += avance[i] * k;
-    });
-    return out;
-  }
-
-  /* Solo se recalcula si el mazo ESTÁ en abanico. En móvil el mazo es una
-     tira de flexbox: meterle las coordenadas del abanico —lo que pasaba en
-     cada `resize`, y el móvil dispara `resize` con solo esconder la barra
-     del navegador— encimaba las piezas y las sacaba de la pantalla. */
-  const enMovil = () => window.matchMedia('(max-width: 768px)').matches;
-
-  function layoutFan(animate) {
-    if (!deck || !deck.classList.contains('is-fan') || enMovil()) return;
-    const list = intercalar(Array.from(deck.querySelectorAll('.piece')).filter(el => !el.hidden));
-    const coords = fanCoords(list);
-    list.forEach((el, i) => {
-      const c = coords[i];
-      const props = { x: c.x, y: c.y, rotation: c.rotation, zIndex: c.z, opacity: 1, scale: 1 };
-      if (animate) gsap.to(el, { ...props, duration: 0.6, ease: 'expo.inOut' });
-      else gsap.set(el, props);
-    });
-  }
-
-  function work() {
-    if (!deck || !stage) return;
-    const cards = gsap.utils.toArray('.piece', deck);
-    if (!cards.length) return;
-
-    deck.classList.add('is-fan');
-    if (frame) frame.classList.add('is-on');
-    if (titles && window.innerWidth > 1024) titles.classList.add('is-on');
-
-    const lis = titles ? Array.from(titles.querySelectorAll('li')) : [];
-    const W = deck.clientWidth;
-    const H = deck.clientHeight || 700;
-    const cw = cards[0].offsetWidth || 240;
-    const ch = cards[0].offsetHeight || 420;
-
-    // El marco vive al 50%/50% del escenario y el mazo ya cubre el
-    // escenario entero: por eso el centro del mazo ES el del marco.
-    const parkX = W / 2 - cw / 2;
-    const parkY = H / 2 - ch / 2;
-    const step = ch * 1.18;
-
-    // Coordenadas de las tres fases
-    const paradeY = cards.map((_, i) => parkY + i * step);
-    const scatter = cards.map((_, i) => ({
-      x: parkX + (seeded(i, 2) - 0.5) * Math.min(W * 0.86, 1000),
-      y: parkY + (seeded(i, 5) - 0.5) * H * 0.44,
-      rotation: (seeded(i, 9) - 0.5) * 34
-    }));
-    const orden = intercalar(cards);
-    const fanPos = fanCoords(orden);
-    // Devuelve las coordenadas al orden del DOM para poder indexar por i.
-    const fan = cards.map(el => fanPos[orden.indexOf(el)]);
-
-    cards.forEach((el, i) => gsap.set(el, {
-      x: parkX, y: paradeY[i], rotation: 0, opacity: 1, scale: 0.9, zIndex: 10 + i
-    }));
-
-    const proxy = { p: 0 };
-
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: stage,
-        start: 'top top',
-        end: '+=260%',
-        scrub: 0.8,
-        pin: true,                 // PIN 2 de 2 en toda la página
-        anticipatePin: 1,
-        invalidateOnRefresh: true
-      }
-    });
-
-    // Fase 1 — desfile por el marco
-    tl.to(proxy, {
-      p: 1, ease: 'none',
-      onUpdate: () => {
-        const shift = proxy.p * step * cards.length;   // los pasa a todos por el marco
-        cards.forEach((el, i) => gsap.set(el, { y: paradeY[i] - shift }));
-        if (lis.length) {
-          const idx = Math.min(cards.length - 1, Math.floor(proxy.p * cards.length));
-          lis.forEach((li, i) => li.classList.toggle('is-lit', i === idx));
-        }
-      }
-    }, 0);
-
-    // Fase 2 — salen del marco y se dispersan
-    tl.to(frame, { opacity: 0, scale: 1.25, ease: 'power2.in', duration: 0.35 }, 0.9);
-    if (titles) tl.to(titles, { opacity: 0, ease: 'none', duration: 0.3 }, 0.9);
-    cards.forEach((el, i) => {
-      tl.to(el, {
-        x: scatter[i].x, y: scatter[i].y, rotation: scatter[i].rotation,
-        scale: 1, ease: 'power2.out', duration: 0.55
-      }, 0.95 + i * 0.035);
-    });
-
-    // Fase 3 — se acomodan en abanico
-    cards.forEach((el, i) => {
-      tl.to(el, {
-        x: fan[i].x, y: fan[i].y, rotation: fan[i].rotation, zIndex: fan[i].z,
-        ease: 'expo.inOut', duration: 0.7
-      }, 1.75 + i * 0.045);
-    });
-
-    // OJO: aquí NO va un ScrollTrigger que llame a layoutFan(). Se disparaba
-    // durante el desfile y arrastraba las piezas al abanico antes de tiempo.
-    // La fase 3 de la timeline ya las deja en su sitio.
-
-    // El abanico no se queda quieto una vez acomodado. La flotación va sobre
-    // .piece__thumb, NO sobre .piece: ahí viven las coordenadas del abanico y
-    // pisarlas rompería la posición y el reacomodo por filtros.
-    idle(cards);
-    wireHover(cards);
-
-    // La sombra de suelo entra cuando el abanico ya está formado.
-    ScrollTrigger.create({
-      trigger: stage,
-      start: 'top top',
-      end: '+=260%',
-      onUpdate: self => stage.classList.toggle('is-settled', self.progress > 0.72)
-    });
-  }
-
-  /* Vida propia del abanico: cada pieza respira a su ritmo. Periodos
-     primos entre sí para que el conjunto no lata a la vez. */
-  function idle(cards) {
-    cards.forEach((el, i) => {
-      const thumb = el.querySelector('.piece__thumb');
-      if (!thumb) return;
-      gsap.to(thumb, {
-        y: (seeded(i, 21) - 0.5) * 22 - 6,
-        rotation: (seeded(i, 23) - 0.5) * 2.6,
-        duration: 2.9 + seeded(i, 27) * 2.4,
-        ease: 'sine.inOut',
-        yoyo: true,
-        repeat: -1,
-        delay: seeded(i, 29) * 1.6
-      });
-    });
-  }
-
-  /* Reacomodo por filtros — aquí Flip sí es la herramienta:
-     es un cambio de estado discreto, no una animación con scrub. */
-  /* Al pasar por encima, la pieza sale del vaivén y se adelanta. */
-  function wireHover(cards) {
-    if (!window.matchMedia('(pointer: fine)').matches) return;
-    cards.forEach(el => {
-      const thumb = el.querySelector('.piece__thumb');
-      if (!thumb) return;
-      el.addEventListener('pointerenter', () => {
-        gsap.to(thumb, { scale: 1.045, duration: 0.45, ease: 'expo.out', overwrite: 'auto' });
-      });
-      el.addEventListener('pointerleave', () => {
-        gsap.to(thumb, { scale: 1, duration: 0.55, ease: 'expo.out', overwrite: 'auto' });
-      });
-    });
-  }
-
-  function wireFlip() {
-    if (!deck) return;
-    window.CCMotion = window.CCMotion || {};
-    window.CCMotion.reflow = mutate => {
-      // En móvil no hay abanico que rearmar: Flip con `absolute: true`
-      // arrancaba las piezas de la tira para animarlas y las devolvía
-      // descolocadas. Aquí basta con que las que quedan entren.
-      if (!deck.classList.contains('is-fan') || enMovil()) {
-        mutate();
-        const vivas = deck.querySelectorAll('.piece:not([hidden])');
-        if (vivas.length) {
-          gsap.fromTo(vivas,
-            { opacity: 0, y: 12 },
-            { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out',
-              stagger: 0.04, clearProps: 'transform' });
-        }
-        return;
-      }
-
-      // Escritorio sin Flip: el abanico se recoloca igual, sin transición.
-      if (!window.Flip) { mutate(); layoutFan(true); return; }
-
-      const targets = deck.querySelectorAll('.piece');
-      const state = Flip.getState(targets, { props: 'opacity' });
-      mutate();
-      layoutFan(false);
-      Flip.from(state, {
-        duration: 0.6,
-        ease: 'expo.inOut',
-        absolute: true,
-        zIndex: 100,
-        onEnter: els => gsap.fromTo(els, { opacity: 0, scale: 0.78 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'expo.out' }),
-        onLeave: els => gsap.to(els, { opacity: 0, scale: 0.78, duration: 0.3, ease: 'power2.in' })
-      });
-    };
-  }
-
-  /* =======================================================
      PROCESO — fragmentos. Bloques y líneas, NUNCA caracteres:
      partir párrafos por carácter arruina la lectura asistida.
      ======================================================= */
@@ -423,7 +170,7 @@
         start: 'top top',
         end: '+=190%',
         scrub: 0.7,
-        pin: true,                 // PIN 1 de 2 en toda la página
+        pin: true,                 // el único pin de la página
         anticipatePin: 1,
         invalidateOnRefresh: true
       }
@@ -467,7 +214,7 @@
 
   /* =======================================================
      CONTACTO — la tipografía choca con el bloque naranja.
-     Sin pin: el presupuesto se gastó en proceso y trabajo.
+     Sin pin: más de dos pines pelean contra el scroll nativo.
      ======================================================= */
   function contact() {
     const sec = document.querySelector('.contact');
@@ -590,29 +337,12 @@
      MÓVIL — sin pins. Versión corta que no secuestra el scroll.
      ======================================================= */
   function mobile() {
-    // Si se llegó aquí estrechando la ventana, las piezas todavía traen
-    // las coordenadas del abanico puestas a mano. Se limpian antes de nada.
-    gsap.set('.piece', { clearProps: 'all' });
-    gsap.set('.piece__thumb', { clearProps: 'all' });
-
     gsap.utils.toArray('.frag, .proc__photo').forEach(el => {
       gsap.from(el, {
         opacity: 0, y: 30, duration: 0.6, ease: 'power2.out',
         scrollTrigger: { trigger: el, start: 'top 92%', once: true }
       });
     });
-
-    // Las piezas van en una sola tanda disparada por el mazo: están todas a
-    // la misma altura, así que un ScrollTrigger por pieza las encendía a la
-    // vez y además dejaba transformaciones puestas mientras se desliza.
-    const cards = deck ? gsap.utils.toArray('.piece', deck) : [];
-    if (cards.length) {
-      gsap.from(cards, {
-        opacity: 0, y: 24, duration: 0.55, ease: 'power2.out', stagger: 0.06,
-        clearProps: 'transform',
-        scrollTrigger: { trigger: deck, start: 'top 88%', once: true }
-      });
-    }
 
     const sec = document.querySelector('.contact');
     if (sec) gsap.from('.cta', {
@@ -660,28 +390,17 @@
     precios();
     social();
     contact();
-    wireFlip();
     anchors();
 
+    // Proceso es el único pin que queda en la página, y sigue siendo de
+    // escritorio: en móvil `mobile()` sirve los mismos fragmentos sin
+    // secuestrar el scroll.
     const mm = gsap.matchMedia();
-    mm.add('(min-width: 769px)', () => {
-      work(); proc();
-      // gsap revierte sus tweens al salir del contexto, pero no las clases
-      // ni los `gsap.set` sueltos. Sin esto, al estrechar la ventana la tira
-      // nacía con las piezas encimadas donde las dejó el abanico.
-      return () => {
-        if (deck) deck.classList.remove('is-fan');
-        if (frame) frame.classList.remove('is-on');
-        if (titles) titles.classList.remove('is-on');
-        if (stage) stage.classList.remove('is-settled');
-        gsap.set('.piece', { clearProps: 'all' });
-        gsap.set('.piece__thumb', { clearProps: 'all' });
-      };
-    });
+    mm.add('(min-width: 769px)', () => { proc(); });
     mm.add('(max-width: 768px)', () => { mobile(); });
 
-    // El pin necesita altura determinista: recalcular cuando las
-    // miniaturas de YouTube terminen de cargar.
+    // El pin necesita altura determinista: recalcular cuando la portada
+    // de la presentación termine de cargar.
     let pending = 0;
     document.querySelectorAll('img').forEach(img => {
       if (img.complete) return;
@@ -697,7 +416,7 @@
        pueda escuchar — es un iframe de otro origen. Sin recalcular ahí,
        .proc y todo lo que va después (Precios, Contacto) quedan pineados
        sobre una altura que ya no es la real: un clic en "Precios" en la
-       nav aterriza en Portafolio o en Personal, no en Precios. Un
+       nav aterriza en Personal o en Proceso, no en Precios. Un
        ResizeObserver sobre <main> agarra CUALQUIER cambio de alto —el del
        TikTok incluido, y cualquier otro que aparezca a futuro— sin tener
        que saber la causa. */
@@ -720,7 +439,7 @@
     let rt;
     window.addEventListener('resize', () => {
       clearTimeout(rt);
-      rt = setTimeout(() => { layoutFan(false); ScrollTrigger.refresh(); }, 220);
+      rt = setTimeout(() => ScrollTrigger.refresh(), 220);
     });
   }
 

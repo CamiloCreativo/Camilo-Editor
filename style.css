@@ -419,8 +419,7 @@ h1, h2, h3, .bebas {
 .social__link:nth-child(2) svg { animation-delay: 1.2s; }
 
 /* Solo en punteros con hover de verdad: en táctil, `:hover` se queda
-   pegado tras el toque — el mismo problema que ya resolvió `.piece`
-   en el portafolio con `@media (hover: none)`, aquí al revés. */
+   pegado tras el toque y el icono no vuelve a su sitio. */
 @media (hover: hover) {
   .social__link:hover {
     transform: translateY(-7px) scale(1.1);
@@ -571,8 +570,8 @@ h1, h2, h3, .bebas {
 .hero__cue svg { width: 15px; height: 15px; }
 
 /* =========================================================
-   PRESENTACIÓN — la carta en video, antes del trabajo
-   La tarjeta es la misma del portafolio: 18px de radio y la
+   PRESENTACIÓN — la carta en video, antes de las piezas.
+   La tarjeta es la del resto del sitio: 18px de radio y la
    sombra en dos capas. Cambia el sitio, no la pieza.
    ========================================================= */
 .pitch {
@@ -671,7 +670,7 @@ h1, h2, h3, .bebas {
 }
 
 /* =========================================================
-   MARCA PERSONAL — distinta del portafolio a propósito.
+   MARCA PERSONAL — la única vitrina de piezas del sitio.
    Misma tarjeta que el resto del sitio: 18px de radio y la
    sombra en dos capas, para que el embed de TikTok no desentone.
    ========================================================= */
@@ -723,10 +722,24 @@ h1, h2, h3, .bebas {
 /* El embed trae su propio margen: se anula para que la tarjeta lo controle. */
 .personal__card .tiktok-embed { margin: 0 !important; }
 
-/* Mando del slider — a diferencia de .work__rail, aquí NO hay
-   display:none de base ni consulta de 768px: hace falta en escritorio
-   igual que en móvil, porque nada en un mouse sugiere "esto se
-   desliza". Reutiliza .rail__arrow/.rail__dots/.rail__dot tal cual. */
+/* Reserva del alto del embed. El blockquote de TikTok mide 344px hasta que
+   `embed.js` lo reemplaza, y entonces salta a 757px —medido igual en 1440 y
+   en 375px: la altura la fija TikTok, no el ancho de la tarjeta—. Ese salto
+   ocurre con la página ya cargada y empuja hacia abajo todo lo que viene
+   después de Marca personal: un clic en "Precios" hecho antes del salto
+   aterriza cientos de píxeles corto, porque el scroll ya terminó cuando la
+   sección crece. Reservar el alto lo elimina de raíz, en vez de perseguirlo
+   con `ScrollTrigger.refresh()`.
+
+   La clase la pone `script.js` al arrancar —no al pedir `embed.js`, que es
+   perezoso y llegaría tarde— y la quita si el script no carga: sin JS, o
+   con el CDN de TikTok caído, la tarjeta vuelve a su alto natural en vez de
+   quedar como una caja vacía de 757px. */
+.personal__track.is-reserved .personal__card { min-height: 757px; }
+
+/* Mando del slider — sin display:none de base ni consulta de 768px:
+   hace falta en escritorio igual que en móvil, porque nada en un mouse
+   sugiere "esto se desliza". Usa .rail__arrow/.rail__dots/.rail__dot. */
 .personal__rail {
   display: flex;
   align-items: center;
@@ -735,299 +748,10 @@ h1, h2, h3, .bebas {
   margin-top: clamp(18px, 2.4vw, 28px);
 }
 
-/* =========================================================
-   TRABAJO — el desfile, la dispersión y el abanico
-   ========================================================= */
-.work {
-  position: relative;
-  padding: clamp(90px, 12vw, 170px) 0 clamp(60px, 8vw, 110px);
-}
-.work__stage {
-  position: relative;
-  min-height: 100svh;
-  padding: clamp(84px, 11vh, 130px) var(--pad) 0;
-  max-width: var(--maxw);
-  margin: 0 auto;
-}
-.work__title {
-  font-size: clamp(2.6rem, 9vw, 8rem);
-  color: var(--ink);
-  margin-bottom: clamp(28px, 4vw, 56px);
-}
-
-/* Marco del desfile (fase 1). Sin JS no aparece. */
-.work__frame {
-  display: none;
-  position: absolute;
-  z-index: 3;
-  left: 50%;
-  top: 50%;
-  width: min(360px, 74vw);
-  height: min(520px, 62svh);
-  transform: translate(-50%, -50%);
-  border: 1.6px solid var(--ink);
-  border-radius: 20px;
-  pointer-events: none;
-}
-.work__frame.is-on { display: block; }
-
-/* Lista de títulos que se resalta con el desfile (fase 1) */
-.work__titles {
-  display: none;
-  position: absolute;
-  z-index: 2;
-  left: var(--pad);
-  top: 50%;
-  transform: translateY(-50%);
-  margin: 0; padding: 0;
-  list-style: none;
-  max-width: 34ch;
-}
-.work__titles.is-on { display: block; }
-.work__titles li {
-  font-family: var(--font-titulo);
-  font-weight: 400;
-  text-transform: uppercase;
-  font-size: clamp(1.1rem, 2.1vw, 1.9rem);
-  line-height: 1.14;
-  letter-spacing: 0.02em;
-  color: var(--ink-dim);          /* apagado deliberado; el encendido va a --ink */
-  transition: color var(--t-med);
-}
-.work__titles li.is-lit { color: var(--ink); }
-
-/* El mazo. Estado por defecto = fila legible sin JS. */
-/* La sombra de suelo sobre la que se apoya el abanico */
-.work__stage::after {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  left: 50%;
-  bottom: 12%;
-  width: min(78%, 980px);
-  height: 190px;
-  transform: translateX(-50%);
-  background: radial-gradient(ellipse at center, rgba(0, 51, 102, 0.16), transparent 68%);
-  filter: blur(26px);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 600ms ease;
-}
-.work__stage.is-settled::after { opacity: 1; }
-
-.work__deck {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  gap: clamp(18px, 2.6vw, 38px);
-  align-items: flex-end;
-}
-.work__deck.is-fan {
-  display: block;
-  position: absolute;
-  inset: 0;
-  height: auto;
-  --fan-w: clamp(150px, 16vw, 240px);
-}
-/* En abanico TODAS las piezas comparten ANCHO y la altura la dicta su
-   proporción. Al revés —altura fija— una pieza apaisada salía de 672px
-   y se desbordaba del viewport por mucho que se apretaran las posiciones. */
-.work__deck.is-fan .piece { width: var(--fan-w); }
-.work__deck.is-fan .piece__thumb {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 9 / 16;
-}
-.work__deck.is-fan .piece[data-orientation="landscape"] { width: calc(var(--fan-w) * 1.42); }
-.work__deck.is-fan .piece[data-orientation="landscape"] .piece__thumb {
-  aspect-ratio: 16 / 10;   /* recorta un pelo el 16:9 para ganar altura
-                              y que el abanico no quede desequilibrado */
-}
-.work__deck.is-fan .piece__meta { width: 100%; }
-
-/* --- una pieza --- */
-.piece {
-  position: relative;
-  width: clamp(200px, 22vw, 290px);
-  cursor: pointer;
-  background: none;
-  border: 0;
-  padding: 0;
-  text-align: left;
-  transition: transform var(--t-med) var(--ease-out);
-}
-.work__deck.is-fan .piece {
-  position: absolute;
-  top: 0; left: 0;
-  margin: 0;
-}
-.piece__thumb {
-  display: block;                /* SIN ESTO nada de lo de abajo aplica:
-                                    un <span> es inline y las cajas inline
-                                    ignoran aspect-ratio y no recortan. */
-  position: relative;
-  aspect-ratio: 9 / 16;
-  border-radius: 18px;
-  overflow: hidden;
-  background: var(--ink-wash);
-  /* Sombra en dos capas: una de contacto, corta y densa, y otra
-     larga y difusa. La pieza flota sobre el fondo; no es una tarjeta. */
-  box-shadow:
-    0 2px 6px -2px rgba(0, 51, 102, 0.30),
-    0 30px 56px -28px rgba(0, 51, 102, 0.45);
-  transition: box-shadow var(--t-med) var(--ease-out);
-}
-.piece[data-orientation="landscape"] .piece__thumb { aspect-ratio: 16 / 9; }
-.piece[data-orientation="landscape"] { width: clamp(260px, 32vw, 440px); }
-.piece__thumb img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-.piece__play {
-  position: absolute;
-  z-index: 2;
-  left: 50%; top: 50%;
-  width: 60px; height: 60px;
-  transform: translate(-50%, -50%) scale(0.86);
-  border-radius: 50%;
-  background: var(--flare);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity var(--t-med), transform var(--t-med) var(--ease-out);
-}
-.piece__play svg { width: 20px; height: 20px; fill: var(--tinta); }
-.piece:hover .piece__play,
-.piece:focus-visible .piece__play { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-.piece:hover .piece__thumb {
-  box-shadow:
-    0 4px 10px -2px rgba(0, 51, 102, 0.34),
-    0 44px 76px -26px rgba(0, 51, 102, 0.55);
-}
-.piece:hover { transform: translateY(-6px); }
-/* «Mechanical press»: el desplazamiento iguala la sombra */
-.piece:active { transform: translate(2px, 2px); }
-
-.piece__meta { display: block; padding: 14px 2px 0; }
-.work__deck.is-fan .piece__meta {
-  position: absolute;
-  left: 0; right: 0; top: 100%;
-  padding-top: 12px;
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-  transition: opacity var(--t-med), transform var(--t-med) var(--ease-out);
-}
-.work__deck.is-fan .piece:hover .piece__meta,
-.work__deck.is-fan .piece:focus-visible .piece__meta {
-  opacity: 1;
-  transform: translateY(0);
-}
-/* La pieza que se mira pasa al frente del abanico */
-.work__deck.is-fan .piece:hover,
-.work__deck.is-fan .piece:focus-visible { z-index: 200 !important; }
-.piece__name {
-  display: block;                /* si queda inline, el título y las
-                                    etiquetas se pegan en una sola línea */
-  font-family: var(--font-titulo);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  font-size: 1.12rem;
-  line-height: 1.05;
-  color: var(--ink);
-}
-.piece__tags {
-  display: block;
-  margin-top: 5px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-txt);
-}
-/* Tierra y no naranja: sobre el fondo claro el naranja no llega a 4.5:1
-   en texto pequeño. Tierra sí (9.73:1) y es justo su papel — «un dato». */
-.piece__highlight {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--earth);
-}
-.piece[hidden] { display: none; }
-
-/* --- filtros: texto con marca, sin píldoras --- */
-.work__controls {
-  max-width: var(--maxw);
-  margin: clamp(40px, 6vw, 84px) auto 0;
-  padding: 0 var(--pad);
-}
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 4px;
-  align-items: center;
-}
-.filters--tag { margin-top: 12px; }
-.filters--tag:empty, .filters--tag.is-empty { display: none; }
-
-.filter {
-  position: relative;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  padding: 9px 13px;
-  min-height: 44px;
-  font-family: var(--font-titulo);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-size: 1.15rem;
-  line-height: 1;
-  color: var(--ink-txt);
-  transition: color var(--t-fast), transform var(--t-fast);
-}
-.filter::after {
-  content: '';
-  position: absolute;
-  left: 13px; right: 13px; bottom: 8px;
-  height: 3px;
-  background: var(--flare);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--t-med) var(--ease-out);
-}
-.filter:hover { color: var(--ink); }
-.filter.is-active { color: var(--ink); }
-.filter.is-active::after { transform: scaleX(1); }
-.filter:active { transform: translate(1px, 1px); }
-
-.filter--tag {
-  font-family: var(--font-cuerpo);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  padding: 7px 11px;
-  min-height: 44px;
-}
-.filter--tag::after { height: 2px; left: 11px; right: 11px; bottom: 11px; }
-
-.work__note {
-  margin: 20px 0 0;
-  max-width: 62ch;
-  font-size: 0.95rem;
-  color: var(--ink-txt);
-  min-height: 1.6em;
-}
-
-/* --- mando del carrusel móvil ---
-   En escritorio no existe: el abanico se recorre con el scroll. Aquí solo
-   queda declarado; quien lo enciende es la consulta de 768px. */
-.work__rail { display: none; }
+/* --- mando del slider (flechas y puntos) ---
+   Lo usa .personal__rail, el único carrusel que queda en la página.
+   Se declara aparte porque nació compartido con el carrusel móvil del
+   portafolio, retirado el 2026-09-24. */
 .rail__arrow {
   flex: 0 0 auto;
   display: flex;
@@ -1843,20 +1567,6 @@ h1, h2, h3, .bebas {
   z-index: 1;
   width: min(940px, 92vw);
 }
-.modal__video {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: #000;
-  border-radius: 14px;
-  overflow: hidden;
-}
-.modal__video iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  border: 0;
-}
 .modal__close {
   position: absolute;
   top: -56px;
@@ -1910,7 +1620,6 @@ h1, h2, h3, .bebas {
   .frag:nth-of-type(8) { grid-column: 1 / span 9; }
   .frag:nth-of-type(9) { grid-column: 2 / span 10; }
   .proc__photo { grid-column: 10 / span 3; grid-row: auto; max-width: 150px; }
-  .work__titles { display: none !important; }
 }
 
 @media (max-width: 768px) {
@@ -1939,7 +1648,7 @@ h1, h2, h3, .bebas {
   .hero__word--shift { margin-left: clamp(14px, 6vw, 60px); }
 
   /* La presentación se apila en el orden que manda: texto, video y solo
-     entonces la salida hacia el portafolio. */
+     entonces la salida hacia Marca personal. */
   .pitch__inner {
     grid-template-columns: 1fr;
     grid-template-areas: "texto" "player" "cue";
@@ -1959,99 +1668,9 @@ h1, h2, h3, .bebas {
   .precios__table th, .precios__table td { padding-right: 22px; }
   .precios__table thead th:first-child,
   .precios__table tbody th[scope="row"] { width: 40%; }
-
-  /* MÓVIL — carrusel tradicional, no abanico.
-     Una tira que corre de izquierda a derecha, anclada al borde izquierdo
-     y con la siguiente pieza asomando: se ve que hay más y hacia dónde.
-     El abanico —posiciones absolutas, rotaciones, solape— es de escritorio
-     y aquí no entra ninguna de sus reglas. */
-  .work__stage { min-height: auto; padding-bottom: 0; }
-  .work__deck,
-  .work__deck.is-fan {
-    position: relative;
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;   /* eje común: bajo `flex-end` las alturas
-                              distintas dejaban la tira dentada */
-    height: auto;
-    inset: auto;
-    gap: 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: var(--pad);
-    overscroll-behavior-x: contain;   /* el swipe no arrastra la página */
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    /* el aire vertical es para la sombra: `overflow-y` la recortaría */
-    padding: 10px var(--pad) 30px;
-    margin-inline: calc(var(--pad) * -1);
-  }
-  .work__deck::-webkit-scrollbar { display: none; }
-
-  /* Una diapositiva: ancho fijo por orientación, alto por proporción.
-     Al revés —alto fijo para todas— un 16:9 sale más ancho que la
-     pantalla y un 9:16 sale del alto del viewport. */
-  .work__deck .piece,
-  .work__deck.is-fan .piece {
-    position: relative;
-    top: auto; left: auto;
-    flex: 0 0 auto;
-    width: min(62vw, 270px);
-    margin: 0;
-    scroll-snap-align: start;
-  }
-  .work__deck .piece[data-orientation="landscape"],
-  .work__deck.is-fan .piece[data-orientation="landscape"] { width: min(88vw, 430px); }
-
-  /* Esquinas y sombra se quedan: son de la tarjeta, no del abanico. */
-  .work__deck .piece__thumb,
-  .work__deck.is-fan .piece__thumb { width: 100%; height: auto; aspect-ratio: 9 / 16; }
-  .work__deck .piece[data-orientation="landscape"] .piece__thumb,
-  .work__deck.is-fan .piece[data-orientation="landscape"] .piece__thumb { aspect-ratio: 16 / 9; }
-
-  /* Sin hover nada dice que la pieza es un video: el play se queda puesto. */
-  .piece__play { opacity: 1; transform: translate(-50%, -50%) scale(1); width: 52px; height: 52px; }
-
-  /* La ficha se ve siempre, debajo de la tarjeta y no flotando sobre ella. */
-  .work__deck .piece__meta,
-  .work__deck.is-fan .piece__meta {
-    position: static;
-    width: 100%;
-    padding: 12px 2px 0;
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-  .work__stage::after { display: none; }
-
-  /* El mando solo existe aquí, y solo si el JS lo destapó. */
-  .work__rail:not([hidden]) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 2px;
-  }
-}
-
-/* En pantalla táctil el :hover se queda pegado después del toque: la pieza
-   se quedaba levantada y con la sombra grande hasta tocar en otro sitio. */
-@media (max-width: 768px) and (hover: none) {
-  .piece:hover { transform: none; }
-  .piece:hover .piece__thumb {
-    box-shadow:
-      0 2px 6px -2px rgba(0, 51, 102, 0.30),
-      0 30px 56px -28px rgba(0, 51, 102, 0.45);
-  }
 }
 
 @media (max-width: 480px) {
-  /* Menos ancho de pantalla: la apaisada gana lo que puede. La vertical
-     se queda en su 62vw —ya trae tope en píxeles— para que la siguiente
-     pieza siga asomando y se vea que la tira continúa. */
-  .work__deck .piece[data-orientation="landscape"],
-  .work__deck.is-fan .piece[data-orientation="landscape"] { width: 90vw; }
   .cta { grid-template-columns: 1fr auto; }
   .cta__label { grid-column: 1 / -1; }
 }
