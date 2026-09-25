@@ -15,7 +15,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Raleway:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css">
+  <!-- El `?v=` NO es decorativo: sin él, quien ya visitó el sitio recibe el
+       HTML nuevo con el CSS y el JS viejos en caché, y la página se ve rota
+       —pasó el 2026-09-24 con las tarjetas de Marca personal—. GitHub Pages
+       sirve estos archivos con `Cache-Control: max-age=600`, pero el
+       navegador puede conservarlos mucho más. **Cada cambio en style.css,
+       script.js o motion.js sube este número en los tres enlaces.** -->
+  <link rel="stylesheet" href="style.css?v=20260924b">
 </head>
 <body>
 
@@ -799,7 +805,7 @@
        si no carga, el botón avisa por toast en vez de fallar en silencio. -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js"></script>
 
-  <script src="script.js"></script>
-  <script src="motion.js"></script>
+  <script src="script.js?v=20260924b"></script>
+  <script src="motion.js?v=20260924b"></script>
 </body>
 </html>
