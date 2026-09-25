@@ -712,12 +712,12 @@ h1, h2, h3, .bebas {
   position: relative;          /* el iframe del embed se monta encima */
   flex: 0 0 auto;
   width: min(78vw, 330px);
-  /* 757px es el alto que el embed de TikTok se da a sí mismo, medido igual
-     en 1440 y en 375px. La fachada mide lo mismo a propósito: al pulsar,
-     el iframe ocupa exactamente el hueco que ya había, así que la página
-     no se mueve ni un píxel — y nada crece de forma asíncrona, que es lo
-     que dejaba corto cualquier scroll de nav ya terminado. */
-  height: 757px;
+  /* Sin alto fijo: lo dan el fotograma (9:16) y el pie. Hasta el
+     2026-09-24 la tarjeta medía 757px porque ese era el alto que el embed
+     de TikTok se daba a sí mismo, y la fachada tenía que calzarlo para que
+     pulsarla no moviera la página. Con el video servido desde aquí, el
+     `<video>` ocupa el mismo recuadro 9:16 que la portada: no hay nada que
+     calzar y sobran 170px de caja vacía. */
   scroll-snap-align: start;
   border-radius: 18px;
   overflow: hidden;
@@ -743,9 +743,8 @@ h1, h2, h3, .bebas {
    fotograma desenfocado, servido por `--portada` desde el HTML. */
 .personal__shot {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 0;               /* sin esto el flex no deja encoger la caja */
   display: block;
+  aspect-ratio: 9 / 16;        /* el recuadro que ocupará el video */
   overflow: hidden;
   background: var(--ink);      /* solo se ve el instante antes del fotograma */
 }
@@ -820,19 +819,25 @@ h1, h2, h3, .bebas {
   color: var(--ink-txt);
 }
 
-/* El iframe, montado por `script.js` al pulsar. Absoluto y al 100%: no
-   aporta alto propio, así que montarlo no mueve nada. Nace transparente y
-   solo aparece cuando dispara `load`; hasta entonces se ve la portada. */
-.personal__frame {
+/* El reproductor, montado por `script.js` al pulsar. Va como hijo de la
+   TARJETA y no del enlace —un `<video controls>` dentro de un `<a>` hace
+   que tocar los controles siga el enlace— y se coloca sobre el mismo
+   recuadro 9:16 que ocupa la portada: misma caja, así que montarlo no
+   mueve nada. El `aspect-ratio` se repite aquí porque, al ser absoluto,
+   ya no hereda el alto de `.personal__shot`. */
+.personal__video {
   position: absolute;
-  inset: 0;
-  width: 100%; height: 100%;
-  border: 0;
-  opacity: 0;
-  transition: opacity var(--t-med);
+  top: 0; left: 0;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  display: block;
+  background: #000;
+  border-radius: 18px 18px 0 0;
 }
-.personal__card.is-ready .personal__frame { opacity: 1; }
-.personal__card.is-ready .personal__cover { visibility: hidden; }
+/* La portada se va, el pie se queda: mientras el video corre se sigue
+   leyendo de quién es y de qué va. */
+.personal__card.is-playing .personal__cover img,
+.personal__card.is-playing .personal__play { visibility: hidden; }
 
 /* Mando del slider — sin display:none de base ni consulta de 768px:
    hace falta en escritorio igual que en móvil, porque nada en un mouse

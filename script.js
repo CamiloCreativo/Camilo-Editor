@@ -1084,89 +1084,54 @@
     });
   }
 
-  /* ---------- Marca personal: el embed se monta al hacer clic ----------
-     Cada tarjeta es una fachada —portada propia servida desde
-     `assets/tiktok/` y un enlace de verdad al video—, igual que la portada
-     de la presentación. El iframe de TikTok se monta aquí mismo al pulsar,
-     y solo el pulsado.
+  /* ---------- Marca personal: el video lo sirve este sitio ----------
+     La tarjeta es una fachada —portada propia y un enlace de verdad al
+     video en TikTok— y al pulsarla se monta un `<video>` con el archivo de
+     `assets/videos/`. Ni iframe ni `embed.js`: **el sitio no le pide nada a
+     TikTok**.
 
-     Por qué, y no cargándolos solos: TikTok limita cuántos embeds sirve a
-     un mismo cliente y, pasado el cupo, devuelve dentro de su iframe el
-     cartel "overload-protect triggered" en vez del video. El cupo es
-     móvil —se agota con el uso y se repone con el tiempo—, así que no hay
-     número de tarjetas ni reparto en el tiempo que lo evite: medido, ni
-     espaciar los siete 3 segundos cambiaba nada. Lo único que el sitio
-     controla es **cuántos gasta**, y una visita normal pasa de gastar
-     siete a gastar cero. El cartel lo pinta TikTok dentro de un iframe de
-     otro origen: no se puede leer ni reintentar desde aquí.
+     Por qué se llegó hasta aquí: el embed oficial devolvía "overload-protect
+     triggered" en vez del video. TikTok limita cuántos sirve a un mismo
+     cliente y el cupo es móvil —se agota con el uso—, así que ni pedir
+     menos ni repartirlos en el tiempo lo evita: con el cupo gastado falla
+     hasta un embed suelto. Y cuando cargaba, tardaba unos 11 segundos.
 
-     `embed.js` tampoco se carga ya: construía este mismo iframe, pero los
-     siete de golpe y sin forma de impedírselo.
-
-     La cola existe para el caso de quien pulsa varias tarjetas seguidas:
-     el siguiente iframe no se pide hasta que el anterior cargó. `TOPE`
-     está porque un iframe de otro origen puede no disparar `load` nunca. */
+     `preload="none"` no hace falta: el elemento nace solo cuando alguien
+     pulsa, así que hasta entonces el video no gasta un byte. Lo que se ve
+     antes es la portada, que ya está cargada. */
   const personalSection = document.getElementById('personal');
   if (personalSection) {
-    const ESPERA = 400;
-    const TOPE = 8000;
-    const cola = [];
-    let ocupado = false;
-
-    const drenar = () => {
-      if (ocupado || !cola.length) return;
-      ocupado = true;
-      montar(cola.shift());
-    };
-    const terminado = () => {
-      ocupado = false;
-      setTimeout(drenar, ESPERA);
-    };
-
-    function montar(cover) {
-      const card = cover.closest('.personal__card');
-      const id = cover.dataset.videoId;
-      if (!card || !id) { terminado(); return; }
-
-      const frame = document.createElement('iframe');
-      frame.className = 'personal__frame';
-      frame.src = 'https://www.tiktok.com/embed/v2/' + encodeURIComponent(id) +
-        '?lang=' + encodeURIComponent(document.documentElement.lang || 'es') +
-        '&referrer=' + encodeURIComponent(location.href);
-      frame.title = 'Video de @camilocreativo0 en TikTok';
-      // El mismo sandbox que ponía `embed.js`: el reproductor necesita
-      // scripts y poder abrir TikTok en una pestaña nueva, nada más.
-      frame.setAttribute('sandbox',
-        'allow-popups allow-popups-to-escape-sandbox allow-scripts allow-top-navigation allow-same-origin');
-      frame.setAttribute('allow', 'encrypted-media; picture-in-picture; fullscreen');
-
-      let seguido = false;
-      const seguir = () => {
-        if (seguido) return;
-        seguido = true;
-        clearTimeout(reloj);
-        terminado();
-      };
-      const reloj = setTimeout(seguir, TOPE);
-      frame.addEventListener('load', () => {
-        // Recién aquí se tapa la portada. Si TikTok no responde nunca, lo
-        // que queda a la vista es la portada con su enlace, no una caja.
-        card.classList.add('is-ready');
-        seguir();
-      });
-
-      card.appendChild(frame);
-    }
-
     personalSection.querySelectorAll('.personal__cover').forEach(cover => {
       cover.addEventListener('click', e => {
         const card = cover.closest('.personal__card');
-        if (!card || card.dataset.montada) return;   // ya pulsada: deja pasar nada
+        const id = cover.dataset.videoId;
+        if (!card || !id || card.dataset.montada) return;
         e.preventDefault();
         card.dataset.montada = '1';
-        card.classList.add('is-loading');
-        cola.push(cover);
-        drenar();
+
+        const video = document.createElement('video');
+        video.className = 'personal__video';
+        video.src = 'assets/videos/' + encodeURIComponent(id) + '.mp4';
+        video.poster = 'assets/tiktok/' + encodeURIComponent(id) + '.jpg';
+        video.controls = true;
+        video.playsInline = true;      // iOS: que no se lo lleve a pantalla completa
+        const etiqueta = cover.getAttribute('aria-label');
+        if (etiqueta) video.setAttribute('aria-label', etiqueta);
+
+        // Si el archivo faltara, la tarjeta vuelve a su portada en vez de
+        // quedarse con un reproductor muerto, y el video se abre en TikTok.
+        video.addEventListener('error', () => {
+          card.classList.remove('is-playing');
+          delete card.dataset.montada;
+          video.remove();
+          showToast('No pude cargar ese video. Te lo abro en TikTok.');
+          window.open(cover.href, '_blank', 'noopener');
+        });
+
+        card.appendChild(video);
+        card.classList.add('is-playing');
+        const intento = video.play();
+        if (intento && intento.catch) intento.catch(() => { /* queda el control */ });
       });
     });
   }

@@ -21,7 +21,7 @@
        sirve estos archivos con `Cache-Control: max-age=600`, pero el
        navegador puede conservarlos mucho más. **Cada cambio en style.css,
        script.js o motion.js sube este número en los tres enlaces.** -->
-  <link rel="stylesheet" href="style.css?v=20260924b">
+  <link rel="stylesheet" href="style.css?v=20260924c">
 </head>
 <body>
 
@@ -140,8 +140,8 @@
          Desde el 2026-09-24 es la única vitrina de piezas del sitio: el
          portafolio de encargos se retiró porque su nivel ya no es el de
          Camilo hoy. Cada tarjeta es una fachada con su propia portada; el
-         embed de TikTok se monta al pulsar. Sin JS queda un enlace real al
-         video, igual que en la fachada de la presentación. -->
+         video, servido desde este mismo sitio, se monta al pulsar. Sin JS
+         queda un enlace real al video en TikTok. -->
     <section id="personal" class="personal">
       <div class="personal__inner">
         <div class="personal__text">
@@ -159,10 +159,11 @@
              Cada tarjeta es una FACHADA, igual que la portada de la
              presentación: un enlace de verdad al video en TikTok, con su
              portada servida desde `assets/tiktok/`. `script.js` intercepta
-             el clic y monta ahí mismo el iframe del embed. Los embeds NO se
-             cargan solos: TikTok corta a partir del tercero de una misma
-             carga y devuelve "overload-protect triggered" en vez del video.
-             Ver Estructura del sitio. -->
+             el clic y monta un `<video>` con el archivo de `assets/videos/`:
+             el sitio NO le pide nada a TikTok. El embed oficial se descartó
+             porque devolvía "overload-protect triggered" cuando el cliente
+             gastaba su cupo, y tardaba ~11s cuando funcionaba. Ver
+             Estructura del sitio. -->
         <div class="personal__track">
           <div class="personal__card">
             <a class="personal__cover" href="https://www.tiktok.com/@camilocreativo0/video/7688092211640012039"
@@ -170,7 +171,7 @@
                style="--portada: url('assets/tiktok/7688092211640012039.jpg')"
                aria-label="Reproducir: Esta es una forma fácil de entender la direncia entre tipos de edición, aunque no todos editamos de la misma forma">
               <span class="personal__shot">
-                <img src="assets/tiktok/7688092211640012039.jpg" alt="" loading="lazy" width="486" height="648">
+                <img src="assets/tiktok/7688092211640012039.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -186,7 +187,7 @@
                style="--portada: url('assets/tiktok/7686933334974401800.jpg')"
                aria-label="Reproducir: ¿Te gusta la diferencia?">
               <span class="personal__shot">
-                <img src="assets/tiktok/7686933334974401800.jpg" alt="" loading="lazy" width="486" height="648">
+                <img src="assets/tiktok/7686933334974401800.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -202,7 +203,7 @@
                style="--portada: url('assets/tiktok/7685807916795972882.jpg')"
                aria-label="Reproducir: Asi se construye un video">
               <span class="personal__shot">
-                <img src="assets/tiktok/7685807916795972882.jpg" alt="" loading="lazy" width="486" height="648">
+                <img src="assets/tiktok/7685807916795972882.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -218,7 +219,7 @@
                style="--portada: url('assets/tiktok/7685743417099291911.jpg')"
                aria-label="Reproducir: Tú editas,yo grabo">
               <span class="personal__shot">
-                <img src="assets/tiktok/7685743417099291911.jpg" alt="" loading="lazy" width="486" height="648">
+                <img src="assets/tiktok/7685743417099291911.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -234,7 +235,7 @@
                style="--portada: url('assets/tiktok/7683554655774821639.jpg')"
                aria-label="Reproducir: ¿Como conseguir clientes?">
               <span class="personal__shot">
-                <img src="assets/tiktok/7683554655774821639.jpg" alt="" loading="lazy" width="486" height="648">
+                <img src="assets/tiktok/7683554655774821639.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -250,7 +251,7 @@
                style="--portada: url('assets/tiktok/7682210186479684871.jpg')"
                aria-label="Reproducir: Conoce a tu editor de confianza :D">
               <span class="personal__shot">
-                <img src="assets/tiktok/7682210186479684871.jpg" alt="" loading="lazy" width="660" height="1173">
+                <img src="assets/tiktok/7682210186479684871.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -266,7 +267,7 @@
                style="--portada: url('assets/tiktok/7679848889742118152.jpg')"
                aria-label="Reproducir: Seré tu editor de video | Vamos a crear algo">
               <span class="personal__shot">
-                <img src="assets/tiktok/7679848889742118152.jpg" alt="" loading="lazy" width="486" height="648">
+                <img src="assets/tiktok/7679848889742118152.jpg" alt="" loading="lazy" width="660" height="1174">
               </span>
               <span class="personal__play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg></span>
               <span class="personal__meta">
@@ -805,7 +806,7 @@
        si no carga, el botón avisa por toast en vez de fallar en silencio. -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js"></script>
 
-  <script src="script.js?v=20260924b"></script>
-  <script src="motion.js?v=20260924b"></script>
+  <script src="script.js?v=20260924c"></script>
+  <script src="motion.js?v=20260924c"></script>
 </body>
 </html>
